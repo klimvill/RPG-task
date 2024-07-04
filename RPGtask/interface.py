@@ -4,6 +4,7 @@ import sys
 from .console import GameConsole
 from .database import read_tasks, read_hero_info, all_save
 from .utils import skill_check, receiving_awards, get_task_text
+from .config import *
 
 
 class Interface:
@@ -40,7 +41,8 @@ class Interface:
 			'Выполнить задания',
 			'Удалить задание',
 			'Характеристики',
-			'Магазин',
+			'Лавка навыков',
+			'Магазин предметов',
 			'Выход'
 		]
 
@@ -57,8 +59,10 @@ class Interface:
 		elif command == '5':
 			self.characteristics()
 		elif command == '6':
-			self.shop()
+			self.skill_shop()
 		elif command == '7':
+			self.item_store()
+		elif command == '8':
 			all_save(self.tasks, self.hero_info)
 			sys.exit()
 
@@ -87,11 +91,15 @@ class Interface:
 			skills = re.findall(r'\[([^]]*)]', line)
 			time = re.findall(r'\(([^]]*)\)', line)
 
+			if time == 'today': ...  # datatime.datatime()
+			elif time == 'tomorrow': ...
+			elif time == 'рандомная дата в формате дд.мм.гггг': ...
+
 			# Определение навыков #
 			skills_result = []
 			if skills and skills[0] != '':
 				skills = [i.strip() for i in skills[0].split(',')]
-				skills_result = [result for i in skills if (result := skill_check(i, self.hero_info)) is not None]
+				skills_result = set([result for i in skills if (result := skill_check(i, self.hero_info)) is not None])
 
 			# Добавление задачи в список #
 			if skills_result and (time and time[0] != ''):
@@ -176,13 +184,13 @@ class Interface:
 
 		input()
 
-	def shop(self):
+	def skill_shop(self):
 		while True:
 			gold = float(self.hero_info['money'])
 			skills = self.hero_info['skills']
 
-			self.console.title('Магазин, чтобы выйти нажмите enter')
-			self.console.print_table_price(skills)
+			self.console.title('Лавка навыков, чтобы выйти нажмите enter')
+			data = self.console.print_table_price(skills, self.hero_info)
 			self.console.print(f'[yellow]Золото: {round(gold, 2)}[/yellow]\n')
 
 			command = self.console.input('Какие навыки хотите прокачать: ')
@@ -191,11 +199,29 @@ class Interface:
 			if not nums: return
 
 			for num in nums:
-				skill = list(skills.keys())[num - 1]
+				skill = data[num - 1]
 				skill_lvl = skills[skill][0]
+				skill_exp = skills[skill][1]
+				demand_exp = CONSTANT_SKILL * skill_lvl ** MULTIPLIER_SKILL
+				demand_gold = CONSTANT_GOLD * skill_lvl ** MULTIPLIER_GOLD
 
-				if gold - (0.05 * skill_lvl * 1.5) < 0: break
-				gold = gold - (0.05 * skill_lvl * 1.5)
+				if skill_lvl == 0:
+					demand_exp, demand_gold = 0.25, 0.1
+				elif skill_lvl == 1:
+					demand_exp, demand_gold = 0.5, 0.25
+
+				if demand_exp > skill_exp: continue
+				if gold - demand_gold < 0: break
+				gold = gold - demand_gold
 				self.hero_info['skills'][skill][0] += 1
 
 			self.hero_info['money'] = gold
+
+
+	def item_store(self):
+		self.console.title('Магазин предметов, чтобы выйти нажмите enter')
+
+
+
+		input()
+
