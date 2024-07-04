@@ -6,6 +6,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.tree import Tree
+from .config import CONSTANT_SKILL, MULTIPLIER_SKILL, CONSTANT_GOLD, MULTIPLIER_GOLD
 
 
 class GameConsole:
@@ -124,20 +125,52 @@ class GameConsole:
 
 		self.console.print(table)
 
-	def print_table_price(self, skills: dict[str: float]):
+	def print_table_price(self, skills: dict[str: float], hero_info):
 		count = 1
-		table = Table(row_styles=['', 'dim'])
+		data = []
+		table = Table()  #row_styles=['', 'dim']
 
-		table.add_column('№', style='green')
+		table.add_column('№')
 		table.add_column('Навык', style='magenta')
-		table.add_column('Уровень', style='cyan')
+		table.add_column('Уровень', style='cyan', justify='center')
+		table.add_column('Мин. опыт', style='red')
 		table.add_column('Стоимость', style='yellow')
 
+		gold = float(hero_info['money'])
+
 		for skill, i in skills.items():
-			table.add_row(str(count), skill.capitalize(), str(round(i[0], 2)), str(round(0.05 * i[0] * 1.5, 2)))
+			skill_exp = hero_info['skills'][skill][1]
+			demand_exp = round(CONSTANT_SKILL * i[0] ** MULTIPLIER_SKILL, 2)
+			demand_gold = round(CONSTANT_GOLD * i[0] ** MULTIPLIER_GOLD, 2)
+
+			if i[0] == 0:
+				demand_exp, demand_gold = 0.25, 0.1
+			elif i[0] == 1:
+				demand_exp, demand_gold = 0.5, 0.25
+
+
+			if skill_exp >= demand_exp and gold >= demand_gold:
+				table.add_row(
+					f'{count}',
+					skill.capitalize(),
+					f'{round(i[0], 2)}',
+					f'[green]{demand_exp} ({round(skill_exp, 2)})',
+					f'{demand_gold}'
+				)
+			else:
+				table.add_row(
+					f'{count}',
+					f'[dim]{skill.capitalize()}',
+					f'[dim]{round(i[0], 2)}',
+					f'[dim red]{demand_exp} ({round(skill_exp, 2)})',
+					f'[dim]{demand_gold}'
+				)
+
+			data.append(skill)
 			count += 1
 
 		self.console.print(table)
+		return data
 
 	def input(self, *args, **kwargs) -> Any:
 		return self.console.input(*args, **kwargs)

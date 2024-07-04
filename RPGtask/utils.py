@@ -1,6 +1,7 @@
 from random import uniform
 
 from pyxdameraulevenshtein import damerau_levenshtein_distance
+from .config import MULTIPLIER_OBTAINING_GOLD
 
 
 def skill_check(skill: str, hero_info) -> str | None:
@@ -63,14 +64,16 @@ def receiving_awards(nums: list[int], tasks, hero_info) -> list[int | dict | lis
 			continue
 		elif task_info[1] is None:
 			data[0] += uniform(0.01 * gold_multiplier,
-							   0.05 * gold_multiplier) * 2  # Если задание без навыков, то даём в два раза больше золота
+							   0.05 * gold_multiplier) * MULTIPLIER_OBTAINING_GOLD  # Если задание без навыков, то даём в два раза больше золота
 			continue
 
 		data[0] += uniform(0.01 * gold_multiplier, 0.05 * gold_multiplier)
 
 		for skill in task_info[1]:
 			skill_lvl = hero_skills[skill][0]
-			exp = uniform(0.01 * skill_lvl, 0.05 * skill_lvl)
+			if skill_lvl == 0: skill_lvl = 1
+
+			exp = uniform(0.01, 0.05) * skill_lvl
 
 			if skill in data[1]:
 				data[1][skill] += exp
