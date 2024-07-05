@@ -6,6 +6,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.tree import Tree
+
 from .config import CONSTANT_SKILL, MULTIPLIER_SKILL, CONSTANT_GOLD, MULTIPLIER_GOLD
 
 
@@ -36,7 +37,7 @@ class GameConsole:
 
 		self.console.print(text, justify='center')
 
-	def print_task_tree(self, user_tasks: Sequence, daily_tasks: Sequence, quests: Sequence) -> NoReturn:
+	def print_task_tree(self, user_tasks: Sequence, daily_tasks: dict, quests: Sequence) -> NoReturn:
 		tree = Tree('Задания')
 
 		# Пользовательские задания #
@@ -44,7 +45,7 @@ class GameConsole:
 		end = ''
 
 		if count_user_tasks == 0:
-			branch_user_tasks = tree.add(f'[b green]Пользовательские задания[/b green]\nВы не добавили задания\n')
+			branch_user_tasks = tree.add(f'[b green]Пользовательские задания[/]\nВы не добавили задания\n')
 		else:
 			branch_user_tasks = tree.add(f'[b green]Пользовательские задания [{count_user_tasks}]')
 
@@ -53,31 +54,44 @@ class GameConsole:
 
 			text = user_tasks[i][0]
 			skills = user_tasks[i][1]
-			time = user_tasks[i][2]
 
-			if skills is None and time is None:
-				branch_user_tasks.add(f'[green]{text}[/green]' + end)
-			elif skills is None:
-				branch_user_tasks.add(f'[green]{text}[/green]  [dim cyan]Кончается через: {time}[/dim cyan]' + end)
-			elif time is None:
-				branch_user_tasks.add(f'[green]{text}[/green]  [dim cyan]Навыки: {", ".join(skills)}[/dim cyan]' + end)
+			if skills is None:
+				branch_user_tasks.add(f'[green]{text}' + end)
 			else:
-				branch_user_tasks.add(
-					f'[green]{text}[/green]  [dim cyan]Навыки: {", ".join(skills)} | Кончается через: {time}[/dim cyan]' + end)
+				branch_user_tasks.add(f'[green]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
 
 		# Ежедневные задания #
-		count_daily_tasks = len(daily_tasks)
+		done = daily_tasks['done']
+		count_daily_tasks = len(daily_tasks['tasks'])
+		end = ''
 
-		if count_daily_tasks == 0:
-			branch_user_tasks = tree.add(f'[b yellow]Ежедневные задания[/b yellow]\nКончились...\n')
+		if done:
+			branch_user_tasks = tree.add(f'[[green]x[/]] [b yellow]Ежедневные задания')
+		elif count_daily_tasks == 0:
+			branch_user_tasks = tree.add(f'[b yellow]Ежедневные задания[/]\nКончились...\n')
 		else:
-			branch_user_tasks = tree.add(f'[b yellow]Ежедневные задания [{count_daily_tasks}]')
+			branch_user_tasks = tree.add(f'[ ] [b yellow]Ежедневные задания')
+
+		for i in range(count_daily_tasks):
+			if i == count_daily_tasks - 1: end = '\n'
+
+			text, skills, done = daily_tasks['tasks'][i]
+
+			if done:
+				_ = '[dim][[green]x[/]]'
+			else:
+				_ = '[ ]'
+
+			if skills is None:
+				branch_user_tasks.add(f'{_} [yellow]{text}' + end)
+			else:
+				branch_user_tasks.add(f'{_} [yellow]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
 
 		# Квесты #
 		count_quests = len(quests)
 
 		if count_quests == 0:
-			branch_quests = tree.add(f'[b red]Квесты[/b red]\nВозьмите квест в гильдии')
+			branch_quests = tree.add(f'[b red]Квесты[/]\nВозьмите квест в гильдии')
 		else:
 			branch_quests = tree.add(f'[b red]Квесты [{count_daily_tasks}]')
 
@@ -85,23 +99,54 @@ class GameConsole:
 		input()
 
 	def print_all_task(self, user_tasks: Sequence, daily_tasks: Sequence, quests: Sequence) -> NoReturn:
-		# Вывод пользовательских заданий #
-		self.console.print(f'[green]Пользовательские задания[/green]')
+		count = 1
 
+		# Вывод пользовательских заданий #
+		self.console.print('[green]Пользовательские задания')
 		if len(user_tasks) == 0: print('Вы не добавили задания')
 
-		for i in range(len(user_tasks)):
-			text, skills, time = user_tasks[i]
+		for _ in range(len(user_tasks)):
+			text, skills = user_tasks[_]
 
-			if skills is None and time is None:
-				self.console.print(f'[white]({i + 1}) {text}[/white]')
-			elif skills is None:
-				self.console.print(f'[white]({i + 1}) {text}[/white]  [dim cyan]Кончается через: {time}[/dim cyan]')
-			elif time is None:
-				self.console.print(f'[white]({i + 1}) {text}[/white]  [dim cyan]Навыки: {", ".join(skills)}[/dim cyan]')
+			if skills is None:
+				self.console.print(f'[white]({count}) {text}')
 			else:
-				self.console.print(
-					f'[white]({i + 1}) {text}[/white]  [dim cyan]Навыки: {", ".join(skills)} | Кончается через: {time}[/dim cyan]')
+				self.console.print(f'[white]({count}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
+
+			count += 1
+
+		print()
+
+		# Вывод ежедневных заданий #
+		self.console.print('[yellow]Ежедневные задания')
+		if len(daily_tasks) == 0: print('Вы не добавили задания')
+
+		for i in range(len(daily_tasks)):
+			text, skills, done = daily_tasks[i]
+
+			if done: _ = '[dim][[green]x[/]]'
+			else: _ = '[ ]'
+
+			if skills is None:
+				self.console.print(f'[white]({count}) {_} {text}')
+			else:
+				self.console.print(f'[white]({count}) {_} {text}  [dim cyan]Навыки: {", ".join(skills)}')
+
+			count += 1
+
+		print()
+
+		# Квесты #
+		self.console.print('[red]Квесты')
+		if len(quests) == 0: print('Вы не добавили задания')
+
+		for i in range(len(quests)):
+			text, skills = quests[i]
+
+			if skills is None:
+				self.console.print(f'[white]({i + 1}) {text}')
+			else:
+				self.console.print(f'[white]({i + 1}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
 
 		print()
 
@@ -109,26 +154,26 @@ class GameConsole:
 		tree = Tree(title)
 
 		for key, value in skills.items():
-			tree.add(f'[magenta]{key.capitalize()} [green]+{round(value, 2)}[/green][/magenta]')
+			tree.add(f'[magenta]{key.capitalize()} [green]+{round(value, 2)}')
 
 		self.console.print(tree)
 
 	def print_table_characteristics(self, skills: dict[str: float]):
-		table = Table(row_styles=['', 'dim'])
+		table = Table()
 
 		table.add_column('Навык', style='magenta')
 		table.add_column('Уровень', style='cyan')
 		table.add_column('Опыт', style='green')
 
-		for skill, i in skills.items():
-			table.add_row(skill.capitalize(), str(round(i[0], 2)), str(round(i[1], 2)))
+		for skill, item in skills.items():
+			table.add_row(skill.capitalize(), str(round(item[0], 2)), str(round(item[1], 2)))
 
 		self.console.print(table)
 
-	def print_table_price(self, skills: dict[str: float], hero_info):
+	def print_table_price(self, skills: dict[str: float], hero_info) -> list[str]:
 		count = 1
 		data = []
-		table = Table()  #row_styles=['', 'dim']
+		table = Table()
 
 		table.add_column('№')
 		table.add_column('Навык', style='magenta')
@@ -136,32 +181,33 @@ class GameConsole:
 		table.add_column('Мин. опыт', style='red')
 		table.add_column('Стоимость', style='yellow')
 
+
 		gold = float(hero_info['money'])
 
-		for skill, i in skills.items():
-			skill_exp = hero_info['skills'][skill][1]
-			demand_exp = round(CONSTANT_SKILL * i[0] ** MULTIPLIER_SKILL, 2)
-			demand_gold = round(CONSTANT_GOLD * i[0] ** MULTIPLIER_GOLD, 2)
+		for skill, item in skills.items():
+			item = item[0]
 
-			if i[0] == 0:
-				demand_exp, demand_gold = 0.25, 0.1
-			elif i[0] == 1:
-				demand_exp, demand_gold = 0.5, 0.25
+			skill_exp = hero_info['skills'][skill][1]
+			demand_exp = round(CONSTANT_SKILL * item ** MULTIPLIER_SKILL, 2)
+			demand_gold = round(CONSTANT_GOLD * item ** MULTIPLIER_GOLD, 2)
+
+			if item == 0: demand_exp, demand_gold = 0.25, 0.1
+			elif item == 1: demand_exp, demand_gold = 0.5, 0.25
 
 
 			if skill_exp >= demand_exp and gold >= demand_gold:
 				table.add_row(
 					f'{count}',
 					skill.capitalize(),
-					f'{round(i[0], 2)}',
+					f'{round(item, 2)}',
 					f'[green]{demand_exp} ({round(skill_exp, 2)})',
 					f'{demand_gold}'
 				)
-			else:
+			else:  # Поскольку пользователь не может купить улучшение оно затемнено
 				table.add_row(
 					f'{count}',
 					f'[dim]{skill.capitalize()}',
-					f'[dim]{round(i[0], 2)}',
+					f'[dim]{round(item, 2)}',
 					f'[dim red]{demand_exp} ({round(skill_exp, 2)})',
 					f'[dim]{demand_gold}'
 				)
