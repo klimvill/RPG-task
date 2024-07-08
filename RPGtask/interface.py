@@ -3,19 +3,23 @@ import re
 import sys
 from datetime import date
 
-from .config import *
-from .console import GameConsole
-from .data.daily_tasks import *
-from .database import read_tasks, read_hero_info, all_save, get_task_text, get_information_about_task
-from .utils import skill_check, receiving_awards, get_rewards_daily_tasks
+from .awards import AwardsManager
+from .console import MyConsole
+from .database import read_tasks, read_hero_info, get_information_about_task, all_save, get_task_text, read_inventory
+from .inventory import Inventory, Item
+from .utils import skill_check, get_item
+from .data.daily_tasks import options_daily_tasks
+from .data.items import *
 
 
 class Interface:
-	tasks = read_tasks()
-	hero_info = read_hero_info()
-
 	def __init__(self):
-		self.console = GameConsole()
+		self.console = MyConsole(self)
+		self.awards = AwardsManager()
+		self.inventory = Inventory()
+
+		self.tasks: dict[str, list | dict] = read_tasks()
+		self.hero_info: dict[str: int, str: list[int, int]] = read_hero_info()
 
 		self.update()
 		self.main()
@@ -23,11 +27,13 @@ class Interface:
 	def main(self):
 		while True:
 			try:
+				# self.inventory.take(shabby_hood, 1)
+				# self.inventory.take(wooden_circlet, 1)
 				self.main_menu()
-				# todo: Вернуть except
+
 
 			except KeyboardInterrupt:
-				all_save(self.tasks, self.hero_info)
+				all_save(self.tasks, self.hero_info, self.inventory.save())
 				break
 
 	def main_menu(self):
@@ -38,6 +44,7 @@ class Interface:
 			'Удалить задание',
 			'Характеристики',
 			'Лавка навыков',
+			'Инвентарь',
 			'Выход'
 		]
 
@@ -56,17 +63,14 @@ class Interface:
 		elif command == '6':
 			self.skill_shop()
 		elif command == '7':
-			all_save(self.tasks, self.hero_info)
+			self.view_inventory()
+		elif command == '8':
+			all_save(self.tasks, self.hero_info, self.inventory.save())
 			sys.exit()
 
 	def view_tasks(self):
 		self.console.title('Просмотр заданий, чтобы выйти нажмите enter')
-
-		user_tasks = self.tasks['user_tasks']
-		daily_tasks = self.tasks['daily_tasks']
-		quests = self.tasks['quests']
-
-		self.console.print_task_tree(user_tasks, daily_tasks, quests)
+		self.console.print_task_tree()
 
 	def add_tasks(self):
 		"""
@@ -101,21 +105,19 @@ class Interface:
 
 		count = len(user_tasks) + len(daily_tasks) + len(quests)
 
-
 		# Отметка выполненных заданий #
 		self.console.title('Отметить выполнение заданий, чтобы выйти нажмите enter')
-		self.console.print_all_task(user_tasks, daily_tasks, quests)
+		self.console.print_all_task()
 		command = self.console.input('Какие задания вы выполнили: ')
 
 		if command == '': return
 		nums = set([int(i) for i in re.findall(r'\d+', command) if 0 <= int(i) <= count])
 		if not nums: return
 
-
 		# Выдача наград #
-		gold, skills_, items = receiving_awards(nums, self.tasks, self.hero_info)
+		gold, skills_, items = self.awards.get_rewards_user_tasks(nums, self.tasks, self.hero_info['skills'])
 
-		if [gold, skills_, items] != [0, {}, []]:
+		if [gold, skills_, items] != [0, {}, '']:
 			self.console.title('Награды, чтобы выйти нажмите enter')
 
 			for num in nums:
@@ -127,20 +129,24 @@ class Interface:
 				if where == 'daily_tasks' and daily_tasks[num - len(user_tasks) - 1][2]: continue
 				self.console.print(f'- [green]{text}')
 
-
-			self.console.print(f'\n[yellow]Золото: [green]+{round(gold, 2)}')
-			self.console.print_tree_skills('[magenta]Навыки:', skills_)
-
+			if gold:
+				self.console.print(f'\n[yellow]Золото: [green]+{round(gold, 2)}')
+			if skills_:
+				self.console.print_tree_skills('[magenta]Навыки:', skills_)
+			if items:
+				print()
+				self.console.print_item_tree(items)
 
 		# Сохранение #
 		self.hero_info['money'] += gold
-
 
 		for num in sorted(nums, reverse=True):
 			if (task_info := get_information_about_task(num, self.tasks)) is None: continue
 			where, text, skills = task_info
 
-			if where == 'user_tasks': del user_tasks[num - 1]
+			if where == 'user_tasks':
+				del user_tasks[num - 1]
+
 			elif where == 'daily_tasks':
 				done = self.tasks['daily_tasks']['done']
 				daily_tasks[num - len(user_tasks) - 1][2] = True
@@ -150,7 +156,7 @@ class Interface:
 					self.tasks['daily_tasks']['done'] = True
 
 					self.console.print('\n[dim]Вы выполнили все ежедневные задания, вот ваша награда:')
-					gold, skills, item = get_rewards_daily_tasks(daily_tasks, self.hero_info)
+					gold, skills, item = self.awards.get_rewards_daily_tasks(daily_tasks, self.hero_info['skills'])
 
 					self.hero_info['money'] += gold
 					self.console.print(f'[yellow]Золото: [green]+{round(gold, 2)}')
@@ -162,30 +168,29 @@ class Interface:
 						else:
 							skills_[skill] = exp
 
-
 		for skill, exp in skills_.items():
 			self.hero_info['skills'][skill][1] += exp
+
+		_ = False
+		for item in items:
+			amount = self.inventory.take(item, 1)
+
+			if amount > 0:
+				if not _:
+					_ = True
+					self.console.print(f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
+				self.console.print(f'- {item.name} [green]+{item.sell}')
+				self.hero_info['money'] += item.sell
 
 		input()
 
 	def delete_tasks(self):
-		# Поскольку мы не можем удалить ежедневные задания или квест, то печатать их необязательно.
+		# Поскольку мы не можем удалить ежедневные задания или квесты, то печатать их необязательно.
 		user_tasks = self.tasks['user_tasks']
 
 		self.console.title('Удаление заданий, чтобы выйти нажмите enter')
-		self.console.print('[green]Пользовательские задания')
-		if len(user_tasks) == 0: print('Вы не добавили задания')
-
-		for _ in range(len(user_tasks)):
-			text, skills = user_tasks[_]
-
-			if skills is None:
-				self.console.print(f'[white]({_ + 1}) {text}')
-			else:
-				self.console.print(f'[white]({_ + 1}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
-
-		command = self.console.input('\nКакие задания вы выполнили: ')
-
+		self.console.print_user_tasks()
+		command = self.console.input('\nКакие задания вы хотите удалить: ')
 
 		if command == '': return
 		nums = [int(i) for i in re.findall(r'\d+', command) if 0 <= int(i) <= len(user_tasks)]
@@ -200,7 +205,7 @@ class Interface:
 
 		# Удаление задач #
 		for num in sorted(nums, reverse=True):
-			del self.tasks['user_tasks'][num - 1]
+			del user_tasks[num - 1]
 
 		input()
 
@@ -219,9 +224,8 @@ class Interface:
 			gold = float(self.hero_info['money'])
 			skills = self.hero_info['skills']
 
-
 			self.console.title('Лавка навыков, чтобы выйти нажмите enter')
-			data = self.console.print_table_price(skills, self.hero_info)
+			self.console.print_table_price()
 			self.console.print(f'[yellow]Золото: {round(gold, 2)}\n')
 
 			command = self.console.input('Какие навыки хотите прокачать: ')
@@ -231,10 +235,12 @@ class Interface:
 			if not nums: return
 
 			for num in nums:
-				skill = data[num - 1]
+				# todo: Делаю два раза то, что достаточно сделать единожды (self.console.print_table_price())
+
+				skill = list(skills.keys())[num - 1]
 				skill_lvl, skill_exp = skills[skill]
-				demand_exp = CONSTANT_SKILL * skill_lvl ** MULTIPLIER_SKILL
-				demand_gold = CONSTANT_GOLD * skill_lvl ** MULTIPLIER_GOLD
+
+				demand_exp, demand_gold = self.awards.get_price_skill(skill_lvl)
 
 				if skill_lvl == 0:
 					demand_exp, demand_gold = 0.25, 0.1
@@ -249,7 +255,82 @@ class Interface:
 
 			self.hero_info['money'] = gold
 
+	def view_inventory(self):
+		while True:
+			self.console.title('Инвентарь, чтобы выйти нажмите enter')
+			self.console.show_inventory()
+			slot_ = self.console.input('\nВведите номер слота для управления им: ')
+
+			if slot_ == '': break
+
+			if slot_.isnumeric() and 0 < int(slot_) <= len(self.inventory.slots):
+				slot = self.inventory.slots[int(slot_) - 1]
+				self.console.clear_console()
+			else:
+				continue
+			# slot = self.console.menu('Введите номер слота для управления им: ', self.inventory.slots, '2')
+
+			if not slot:
+				break
+			if slot.empty:
+				self.console.print("Слот пуст!")
+				input()
+				continue
+			print()
+			self.console.print(
+				f"[bold green]Управление предметом: {self.console.show_item(slot, False)}[/]\n"
+				"  [green]i[white] - информация[/]\n"
+				"  [green]w[white] - надеть/снять[/]\n"
+				"  [green]u[white] - использовать[/]\n"
+				"  [green]s[white] - продать[/]\n"
+				"  [green]e[white] - отмена[/]"
+			)
+			item = get_item(slot.id)
+			command = self.console.input('Что вы хотите сделать с предметом: ')
+
+			if command == "e":
+				continue
+			if command == "i":
+				print()
+				self.console.presence_item(item)
+			elif command == "w":
+				if slot.type == ItemType.ITEM and item.type != ItemType.ITEM:
+					slots = self.inventory.get(item.type, only_empty=True)
+					if slots:
+						slots[0][1].swap(slot)
+						self.console.print("[green]Предмет надет[/]")
+					else:
+						self.console.print("[red]Нет доступных слотов[/]")
+				elif slot.type != ItemType.ITEM:
+					slots = self.inventory.get(ItemType.ITEM, only_empty=True)
+					if slots:
+						slots[0][1].swap(slot)
+						self.console.print("[green]Предмет снят[/]")
+					else:
+						self.console.print("[red]Нет доступных слотов[/]")
+				elif slot.type == ItemType.ITEM and item.type == ItemType.ITEM:
+					self.console.print("[red]Вы не можете это надеть")
+
+			elif command == "u":
+				if item.effects:
+					# todo: Применение эффектов
+					# game.player.apply(item)
+					slot.amount -= 1
+				else:
+					self.console.print("[red]Вы не можете это использовать")
+			elif command == "s":
+				if item.possible_sell:
+					self.hero_info['money'] += item.sell
+					slot.clear()
+					self.console.print(f"[green]Предмет успешно продан за {item.sell} монеты[/]")
+				else:
+					self.console.print("[red]Вы не можете это продать")
+			input()
+
+
+
 	def update(self):
+		# Выдача ежедневных заданий #
 		daily_tasks = self.tasks['daily_tasks']['tasks']
 		date_task = self.tasks['daily_tasks']['date']
 		today = str(date.today())
@@ -259,7 +340,10 @@ class Interface:
 			self.tasks['daily_tasks']['done'] = False
 			# todo: Выдача дневных задач
 
-			tasks = random.sample(daily_tasks_, len(daily_tasks))
+			tasks = random.sample(options_daily_tasks, len(daily_tasks))
 
 			for i, j in enumerate(tasks):
 				self.tasks['daily_tasks']['tasks'][i] = j
+
+		# Загрузка инвентаря #
+		self.inventory.load(read_inventory())
