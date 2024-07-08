@@ -1,6 +1,7 @@
 from pyxdameraulevenshtein import damerau_levenshtein_distance
-from .inventory import Item
+
 from .data.items import all_items
+from .inventory import Item, ItemType, Inventory
 
 
 def skill_check(skill: str, hero_info) -> str | None:
@@ -28,3 +29,23 @@ def get_item(identifier: str | Item) -> Item:
 		return all_items['three'][identifier]
 
 	raise ValueError(f"Item {identifier} not found")
+
+
+def calculate(inventory: Inventory, skill: str, percent: bool = False):
+	result: int = int(not percent)
+
+	for _, slot in inventory.get(ItemType.ITEM, True):
+		if not slot.empty:
+			item = get_item(slot.id)
+
+			try:
+				if percent:
+					result += int(item.effects[skill] * 100 - 100)
+				else:
+					if item.effects[skill] >= 1:
+						result += item.effects[skill] % 1
+					else:
+						result -= 1 - item.effects[skill]
+			except KeyError:
+				continue
+	return result

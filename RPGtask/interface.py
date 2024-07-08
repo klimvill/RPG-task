@@ -7,7 +7,7 @@ from .awards import AwardsManager
 from .console import MyConsole
 from .database import read_tasks, read_hero_info, get_information_about_task, all_save, get_task_text, read_inventory
 from .inventory import Inventory, Item
-from .utils import skill_check, get_item
+from .utils import skill_check, get_item, calculate
 from .data.daily_tasks import options_daily_tasks
 from .data.items import *
 
@@ -15,8 +15,8 @@ from .data.items import *
 class Interface:
 	def __init__(self):
 		self.console = MyConsole(self)
-		self.awards = AwardsManager()
 		self.inventory = Inventory()
+		self.awards = AwardsManager(self.inventory)
 
 		self.tasks: dict[str, list | dict] = read_tasks()
 		self.hero_info: dict[str: int, str: list[int, int]] = read_hero_info()
@@ -115,9 +115,9 @@ class Interface:
 		if not nums: return
 
 		# Выдача наград #
-		gold, skills_, items = self.awards.get_rewards_user_tasks(nums, self.tasks, self.hero_info['skills'])
+		gold, skills_, items_ = self.awards.get_rewards_user_tasks(nums, self.tasks, self.hero_info['skills'])
 
-		if [gold, skills_, items] != [0, {}, '']:
+		if [gold, skills_, items_] != [0, {}, '']:
 			self.console.title('Награды, чтобы выйти нажмите enter')
 
 			for num in nums:
@@ -133,9 +133,8 @@ class Interface:
 				self.console.print(f'\n[yellow]Золото: [green]+{round(gold, 2)}')
 			if skills_:
 				self.console.print_tree_skills('[magenta]Навыки:', skills_)
-			if items:
-				print()
-				self.console.print_item_tree(items)
+			if items_:
+				self.console.print_item_tree(items_)
 
 		# Сохранение #
 		self.hero_info['money'] += gold
@@ -156,11 +155,14 @@ class Interface:
 					self.tasks['daily_tasks']['done'] = True
 
 					self.console.print('\n[dim]Вы выполнили все ежедневные задания, вот ваша награда:')
-					gold, skills, item = self.awards.get_rewards_daily_tasks(daily_tasks, self.hero_info['skills'])
+					gold, skills, items = self.awards.get_rewards_daily_tasks(daily_tasks, self.hero_info['skills'])
 
 					self.hero_info['money'] += gold
 					self.console.print(f'[yellow]Золото: [green]+{round(gold, 2)}')
 					self.console.print_tree_skills('[magenta]Навыки:', skills)
+					if items:
+						self.console.print_item_tree(items)
+						items_.extend(items)
 
 					for skill, exp in skills.items():
 						if skill in skills_:
@@ -168,11 +170,12 @@ class Interface:
 						else:
 							skills_[skill] = exp
 
+
 		for skill, exp in skills_.items():
 			self.hero_info['skills'][skill][1] += exp
 
 		_ = False
-		for item in items:
+		for item in items_:
 			amount = self.inventory.take(item, 1)
 
 			if amount > 0:
@@ -257,7 +260,7 @@ class Interface:
 
 	def view_inventory(self):
 		while True:
-			self.console.title('Инвентарь, чтобы выйти нажмите enter')
+			self.console.title('Инвентарь, чтобы выйти нажмите enter\n')
 			self.console.show_inventory()
 			slot_ = self.console.input('\nВведите номер слота для управления им: ')
 
@@ -312,7 +315,7 @@ class Interface:
 					self.console.print("[red]Вы не можете это надеть")
 
 			elif command == "u":
-				if item.effects:
+				if item.is_usable and not item.is_wearable:
 					# todo: Применение эффектов
 					# game.player.apply(item)
 					slot.amount -= 1
