@@ -5,7 +5,7 @@ base_path = path.dirname(__file__)
 hero_path = path.abspath(path.join(base_path, "..", "data/hero.json"))
 
 
-def read_hero_info() -> dict[str: int | str: list[int, int]]:
+def read_hero_info() -> dict[str: int, str: list[int, int]]:
 	with open(hero_path, "r", encoding='utf-8') as file:
 		return json.load(file)
 

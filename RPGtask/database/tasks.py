@@ -5,7 +5,7 @@ base_path = path.dirname(__file__)
 task_path = path.abspath(path.join(base_path, "..", "data/tasks.json"))
 
 
-def read_tasks():
+def read_tasks() -> dict[str, list | dict]:
 	with open(task_path, "r", encoding='utf-8') as file:
 		return json.load(file)
 

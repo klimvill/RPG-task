@@ -1,5 +1,6 @@
 import os
-from typing import Sequence, NoReturn, Any
+from itertools import groupby
+from typing import Literal, NoReturn, Any, Optional, Callable
 
 from rich.console import Console
 from rich.panel import Panel
@@ -7,29 +8,36 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.tree import Tree
 
-from .config import CONSTANT_SKILL, MULTIPLIER_SKILL, CONSTANT_GOLD, MULTIPLIER_GOLD
+from .inventory import ItemType, Slot, Item
+from .utils import get_item
 
 
-class GameConsole:
-	def __init__(self):
+class MyConsole:
+	def __init__(self, interface):
+		self.interface = interface
+
 		self.console = Console()
 
-	def menu(self, prompt: str, variants: Sequence, title: str, clear: bool = True) -> str:
-		if not isinstance(variants, list):
-			variants = list(variants)
-
+	def menu(self, prompt: str, variants: list, title: str, clear: bool = True) -> Any:
 		text_menu = '\n'
+
 		for i, j in enumerate(variants, 1):
 			text_menu += f'[{i}] {j}\n'
 
 		while True:
-			if clear: self.clear_console()
+			if clear:
+				self.clear_console()
 
-			self.console.print(Panel(text_menu, title=title, title_align='left', border_style="cyan"))
-			res = Prompt.ask(prompt, console=self.console)
+			self.panel_print(text_menu, title)
+			res = Prompt.ask(prompt)
 
 			if res.isnumeric() and 1 <= int(res) <= len(variants):
 				return res
+
+	def panel_print(self, text: str, title: str,
+					title_align: Literal['left', 'center', 'right'] = 'left',
+					border_style: str = 'cyan') -> NoReturn:
+		self.console.print(Panel(text, title=title, title_align=title_align, border_style=border_style))
 
 	def title(self, text, clear: bool = True) -> NoReturn:
 		if clear:
@@ -37,7 +45,19 @@ class GameConsole:
 
 		self.console.print(text, justify='center')
 
-	def print_task_tree(self, user_tasks: Sequence, daily_tasks: dict, quests: Sequence) -> NoReturn:
+	def print_tree_skills(self, title: str, skills: dict[str: float]) -> NoReturn:
+		tree = Tree(title)
+
+		for key, value in skills.items():
+			tree.add(f'[magenta]{key.capitalize()} [green]+{round(value, 2)}')
+
+		self.console.print(tree)
+
+	def print_task_tree(self) -> NoReturn:
+		user_tasks = self.interface.tasks['user_tasks']
+		daily_tasks = self.interface.tasks['daily_tasks']
+		quests = self.interface.tasks['quests']
+
 		tree = Tree('Задания')
 
 		# Пользовательские задания #
@@ -52,8 +72,7 @@ class GameConsole:
 		for i in range(count_user_tasks):
 			if i == count_user_tasks - 1: end = '\n'
 
-			text = user_tasks[i][0]
-			skills = user_tasks[i][1]
+			text, skills = user_tasks[i]
 
 			if skills is None:
 				branch_user_tasks.add(f'[green]{text}' + end)
@@ -98,10 +117,9 @@ class GameConsole:
 		self.console.print(tree)
 		input()
 
-	def print_all_task(self, user_tasks: Sequence, daily_tasks: Sequence, quests: Sequence) -> NoReturn:
-		count = 1
+	def print_user_tasks(self, count: int = 1) -> int:
+		user_tasks = self.interface.tasks['user_tasks']
 
-		# Вывод пользовательских заданий #
 		self.console.print('[green]Пользовательские задания')
 		if len(user_tasks) == 0: print('Вы не добавили задания')
 
@@ -116,16 +134,21 @@ class GameConsole:
 			count += 1
 
 		print()
+		return count
 
-		# Вывод ежедневных заданий #
+	def print_daily_tasks(self, count: int) -> int:
+		daily_tasks = self.interface.tasks['daily_tasks']
+
 		self.console.print('[yellow]Ежедневные задания')
 		if len(daily_tasks) == 0: print('Вы не добавили задания')
 
 		for i in range(len(daily_tasks)):
-			text, skills, done = daily_tasks[i]
+			text, skills, done = daily_tasks['tasks'][i]
 
-			if done: _ = '[dim][[green]x[/]]'
-			else: _ = '[ ]'
+			if done:
+				_ = '[dim][[green]x[/]]'
+			else:
+				_ = '[ ]'
 
 			if skills is None:
 				self.console.print(f'[white]({count}) {_} {text}')
@@ -135,8 +158,11 @@ class GameConsole:
 			count += 1
 
 		print()
+		return count
 
-		# Квесты #
+	def print_quests(self, count: int) -> int:
+		quests = self.interface.tasks['quests']
+
 		self.console.print('[red]Квесты')
 		if len(quests) == 0: print('Вы не добавили задания')
 
@@ -144,19 +170,19 @@ class GameConsole:
 			text, skills = quests[i]
 
 			if skills is None:
-				self.console.print(f'[white]({i + 1}) {text}')
+				self.console.print(f'[white]({count}) {text}')
 			else:
-				self.console.print(f'[white]({i + 1}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
+				self.console.print(f'[white]({count}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
+
+			count += 1
 
 		print()
+		return count
 
-	def print_tree_skills(self, title: str, skills: dict[str: float]) -> NoReturn:
-		tree = Tree(title)
-
-		for key, value in skills.items():
-			tree.add(f'[magenta]{key.capitalize()} [green]+{round(value, 2)}')
-
-		self.console.print(tree)
+	def print_all_task(self) -> NoReturn:
+		count = self.print_user_tasks()  # Вывод пользовательских заданий
+		count = self.print_daily_tasks(count)  # Вывод ежедневных заданий
+		self.print_quests(count)  # Вывод квестов
 
 	def print_table_characteristics(self, skills: dict[str: float]):
 		table = Table()
@@ -170,9 +196,9 @@ class GameConsole:
 
 		self.console.print(table)
 
-	def print_table_price(self, skills: dict[str: float], hero_info) -> list[str]:
-		count = 1
-		data = []
+	def print_table_price(self):
+		hero_info = self.interface.hero_info
+		skills = hero_info['skills']
 		table = Table()
 
 		table.add_column('№')
@@ -181,25 +207,24 @@ class GameConsole:
 		table.add_column('Мин. опыт', style='red')
 		table.add_column('Стоимость', style='yellow')
 
-
 		gold = float(hero_info['money'])
+		count = 1
 
 		for skill, item in skills.items():
-			item = item[0]
+			lvl, skill_exp = item
 
-			skill_exp = hero_info['skills'][skill][1]
-			demand_exp = round(CONSTANT_SKILL * item ** MULTIPLIER_SKILL, 2)
-			demand_gold = round(CONSTANT_GOLD * item ** MULTIPLIER_GOLD, 2)
+			demand_exp, demand_gold = self.interface.awards.get_price_skill(lvl)
 
-			if item == 0: demand_exp, demand_gold = 0.25, 0.1
-			elif item == 1: demand_exp, demand_gold = 0.5, 0.25
-
+			if lvl == 0:
+				demand_exp, demand_gold = 0.25, 0.1
+			elif lvl == 1:
+				demand_exp, demand_gold = 0.5, 0.25
 
 			if skill_exp >= demand_exp and gold >= demand_gold:
 				table.add_row(
 					f'{count}',
 					skill.capitalize(),
-					f'{round(item, 2)}',
+					f'{lvl}',
 					f'[green]{demand_exp} ({round(skill_exp, 2)})',
 					f'{demand_gold}'
 				)
@@ -207,16 +232,119 @@ class GameConsole:
 				table.add_row(
 					f'{count}',
 					f'[dim]{skill.capitalize()}',
-					f'[dim]{round(item, 2)}',
+					f'[dim]{lvl}',
 					f'[dim red]{demand_exp} ({round(skill_exp, 2)})',
 					f'[dim]{demand_gold}'
 				)
-
-			data.append(skill)
 			count += 1
 
 		self.console.print(table)
-		return data
+
+	def print_item_tree(self, items: list[Item]) -> NoReturn:
+		tree = Tree('[bold cyan]Вы нашли предметы:')
+
+		for item in items:
+			tree.add(f'{item.name}')
+
+		self.console.print(tree)
+
+	def presence_item(self, item: Item):
+		"""
+		Presents the information of the given item to the user interface.
+
+		Args:
+			item (Item): The item to present.
+		"""
+
+		def get_effects_string(effects: dict[str, int]) -> str:
+			if not effects:
+				return "[b red]Эффектов нет[/]\n"
+			result = "[b red]Эффекты[/]:\n"
+			for key, value in effects.items():
+				result += f"    {key}: [green]+{int(value * 100 - 100)}%[/]\n"
+			return result
+
+		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"
+		effects_info = get_effects_string(item.effects)
+		sell_info = (
+			f"[b yellow]Цена продажи[/]: {item.sell}\n"
+			if item.sell > 0
+			else "[b yellow]Ничего не стоит[/]\n"
+		)
+		cost_info = (
+			f"[b yellow]Цена покупки[/]: {item.cost}\n"
+			if item.cost > 0
+			else "[b yellow]Не продается[/]\n"
+		)
+		# stats_info = f"[white b]Характеристики[/]: {self.get_stats(item)}\n"
+		result = f"[purple b]{item.name}[/] - {item.description}\n"
+		result += item_type_info
+		# result += stats_info
+		result += effects_info
+		result += sell_info
+		result += cost_info
+		self.console.print(result)
+
+	def show_item(
+			self, slot: Slot, show_amount=True, additional: Optional[Callable] = None
+	):
+		"""
+		Generates a string representation of the item in the given slot.
+
+		Args:
+			slot (Slot): The slot containing the item.
+			show_amount (bool, optional): Whether to display the amount of the item. Defaults to True.
+			additional (callable, optional): Additional information to display about the item. Defaults to None.
+
+		Returns:
+			str: The generated string representation of the item.
+		"""
+		if slot.empty:
+			return "[yellow]-[/] "
+		item = get_item(slot.id)
+		text = ""
+		if show_amount:
+			text += f"[white]{slot.amount}x"
+		text += f"[green]{item.name}[/] "
+		if additional:
+			text += additional(item)
+		return text
+
+	def show_inventory(
+			self,
+			show_number=True,
+			show_amount=False,
+			allow: Optional[list[ItemType]] = None,
+			inverse: bool = False,
+	):
+		"""
+		Presents the player's inventory to the user interface.
+
+		Args:
+			show_number (bool, optional): Whether to display numbers for each item. Defaults to False.
+			show_amount (bool, optional): Whether to display the amount of each item. Defaults to True.
+			allow (list[ItemType], optional): The list of allowed item types to display. Defaults to None.
+			inverse (bool, optional): Whether to display items not in the allowed list. Defaults to False.
+		"""
+		inventory = self.interface.inventory
+		self.console.print("[bold green]Инвентарь[/]")
+		grouped_slots = groupby(inventory.slots, lambda i: i.type)
+		counter = 1
+		for slot_type, slots in grouped_slots:
+			if allow:
+				# whitelist
+				if not inverse and slot_type not in allow:
+					continue
+				# blacklist
+				if inverse and slot_type in allow:
+					continue
+			self.console.print("[yellow b]" + ItemType.description(slot_type), end=" ")
+			for slot in slots:
+				if show_number:
+					self.console.print(f"[blue]\\[{counter}][/]", end="")
+					counter += 1
+				self.console.print(self.show_item(slot, show_amount), end="")
+			self.console.print()
 
 	def input(self, *args, **kwargs) -> Any:
 		return self.console.input(*args, **kwargs)
