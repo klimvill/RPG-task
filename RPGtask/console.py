@@ -9,7 +9,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from .inventory import ItemType, Slot, Item
-from .utils import get_item
+from .utils import get_item, calculate
 
 
 class MyConsole:
@@ -190,9 +190,16 @@ class MyConsole:
 		table.add_column('Навык', style='magenta')
 		table.add_column('Уровень', style='cyan')
 		table.add_column('Опыт', style='green')
+		table.add_column('Бонус')
 
 		for skill, item in skills.items():
-			table.add_row(skill.capitalize(), str(round(item[0], 2)), str(round(item[1], 2)))
+			bonus = calculate(self.interface.inventory, skill, percent=True)
+
+			if bonus == 0: bonus = '[dim]0%'
+			elif bonus > 1: bonus = f'[green]+{bonus}%'
+			else: bonus = f'[red]{bonus}%'
+
+			table.add_row(skill.capitalize(), str(round(item[0], 2)), str(round(item[1], 2)), bonus)
 
 		self.console.print(table)
 
@@ -233,7 +240,7 @@ class MyConsole:
 					f'{count}',
 					f'[dim]{skill.capitalize()}',
 					f'[dim]{lvl}',
-					f'[dim red]{demand_exp} ({round(skill_exp, 2)})',
+					f'[dim]{demand_exp} ({round(skill_exp, 2)})',
 					f'[dim]{demand_gold}'
 				)
 			count += 1
@@ -241,7 +248,7 @@ class MyConsole:
 		self.console.print(table)
 
 	def print_item_tree(self, items: list[Item]) -> NoReturn:
-		tree = Tree('[bold cyan]Вы нашли предметы:')
+		tree = Tree('\n[bold cyan]Вы нашли предметы:')
 
 		for item in items:
 			tree.add(f'{item.name}')
@@ -261,7 +268,10 @@ class MyConsole:
 				return "[b red]Эффектов нет[/]\n"
 			result = "[b red]Эффекты[/]:\n"
 			for key, value in effects.items():
-				result += f"    {key}: [green]+{int(value * 100 - 100)}%[/]\n"
+				if value > 1:
+					result += f"    {key}: [green]+{int(value * 100 - 100)}%[/]\n"
+				else:
+					result += f"    {key}: [red]{int(value * 100 - 100)}%[/]\n"
 			return result
 
 		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"
@@ -276,13 +286,11 @@ class MyConsole:
 			if item.cost > 0
 			else "[b yellow]Не продается[/]\n"
 		)
-		# stats_info = f"[white b]Характеристики[/]: {self.get_stats(item)}\n"
-		result = f"[purple b]{item.name}[/] - {item.description}\n"
+		result = f"[purple b]{item.name}[/] - [white]{item.description}\n"
 		result += item_type_info
-		# result += stats_info
 		result += effects_info
-		result += sell_info
 		result += cost_info
+		result += sell_info
 		self.console.print(result)
 
 	def show_item(
@@ -327,7 +335,7 @@ class MyConsole:
 			inverse (bool, optional): Whether to display items not in the allowed list. Defaults to False.
 		"""
 		inventory = self.interface.inventory
-		self.console.print("[bold green]Инвентарь[/]")
+
 		grouped_slots = groupby(inventory.slots, lambda i: i.type)
 		counter = 1
 		for slot_type, slots in grouped_slots:
