@@ -31,10 +31,9 @@ def get_where(num: int, tasks) -> str | None:
 	return where
 
 
-def get_information_about_task(num: int, tasks) -> tuple[str, str, list[str] | None] | None:
+def get_information_about_task(num: int, tasks) -> tuple[str, str, list[str] | None] | tuple[str, int] | None:
 	user_tasks = tasks['user_tasks']
 	daily_tasks = tasks['daily_tasks']['tasks']
-	quests = tasks['quests']
 
 	if 0 < num <= len(user_tasks):
 		where = 'user_tasks'
@@ -44,9 +43,9 @@ def get_information_about_task(num: int, tasks) -> tuple[str, str, list[str] | N
 		where = 'daily_tasks'
 		text, skills, done = daily_tasks[num - len(user_tasks) - 1]
 
-	elif len(daily_tasks) + len(user_tasks) < num <= len(quests) + len(daily_tasks) + len(user_tasks) - 1:
+	elif len(daily_tasks) + len(user_tasks) < num:
 		where = 'quests'
-		text, skills = quests[num - 1]
+		return where, num - len(user_tasks) - len(daily_tasks) - 1
 
 	else:
 		return None

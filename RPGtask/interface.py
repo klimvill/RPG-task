@@ -5,11 +5,13 @@ from datetime import date
 
 from .awards import AwardsManager
 from .console import MyConsole
-from .database import read_tasks, read_hero_info, get_information_about_task, all_save, get_task_text, read_inventory
-from .inventory import Inventory, Item
-from .utils import skill_check, get_item, calculate
 from .data.daily_tasks import options_daily_tasks
 from .data.items import *
+from .database import read_tasks, read_hero_info, get_information_about_task, all_save, get_task_text, read_inventory
+from .inventory import Inventory
+from .utils import skill_check, get_item
+from .quests import QuestManager
+from .data.quests import all_quest
 
 
 class Interface:
@@ -17,6 +19,7 @@ class Interface:
 		self.console = MyConsole(self)
 		self.inventory = Inventory()
 		self.awards = AwardsManager(self.inventory)
+		self.quest_manager = QuestManager()
 
 		self.tasks: dict[str, list | dict] = read_tasks()
 		self.hero_info: dict[str: int, str: list[int, int]] = read_hero_info()
@@ -27,8 +30,6 @@ class Interface:
 	def main(self):
 		while True:
 			try:
-				# self.inventory.take(shabby_hood, 1)
-				# self.inventory.take(wooden_circlet, 1)
 				self.main_menu()
 
 
@@ -47,8 +48,8 @@ class Interface:
 			'Инвентарь',
 			'Выход'
 		]
-
 		command = self.console.menu('Введите команду', variants, 'Меню')
+		# self.quest_manager.start_quest('forgotten_city')
 
 		if command == '1':
 			self.view_tasks()
@@ -65,6 +66,7 @@ class Interface:
 		elif command == '7':
 			self.view_inventory()
 		elif command == '8':
+			self.tasks['quests'] = self.quest_manager.save()
 			all_save(self.tasks, self.hero_info, self.inventory.save())
 			sys.exit()
 
@@ -101,13 +103,10 @@ class Interface:
 	def mark_completion_tasks(self):
 		user_tasks = self.tasks['user_tasks']
 		daily_tasks = self.tasks['daily_tasks']['tasks']
-		quests = self.tasks['quests']
-
-		count = len(user_tasks) + len(daily_tasks) + len(quests)
 
 		# Отметка выполненных заданий #
 		self.console.title('Отметить выполнение заданий, чтобы выйти нажмите enter')
-		self.console.print_all_task()
+		count = self.console.print_all_task()
 		command = self.console.input('Какие задания вы выполнили: ')
 
 		if command == '': return
@@ -124,9 +123,10 @@ class Interface:
 				task_info = get_information_about_task(num, self.tasks)
 				if task_info is None: continue
 				where = task_info[0]
-				text = task_info[1]
 
-				if where == 'daily_tasks' and daily_tasks[num - len(user_tasks) - 1][2]: continue
+				if where == 'quests': continue
+				elif where == 'daily_tasks' and daily_tasks[num - len(user_tasks) - 1][2]: continue
+				text = task_info[1]
 				self.console.print(f'- [green]{text}')
 
 			if gold:
@@ -141,6 +141,12 @@ class Interface:
 
 		for num in sorted(nums, reverse=True):
 			if (task_info := get_information_about_task(num, self.tasks)) is None: continue
+			where = task_info[0]
+			if where == 'quests':
+				self.quest_manager.complete_goal(task_info[1])
+				continue
+
+
 			where, text, skills = task_info
 
 			if where == 'user_tasks':
@@ -170,7 +176,6 @@ class Interface:
 						else:
 							skills_[skill] = exp
 
-
 		for skill, exp in skills_.items():
 			self.hero_info['skills'][skill][1] += exp
 
@@ -181,7 +186,8 @@ class Interface:
 			if amount > 0:
 				if not _:
 					_ = True
-					self.console.print(f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
+					self.console.print(
+						f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
 				self.console.print(f'- {item.name} [green]+{item.sell}')
 				self.hero_info['money'] += item.sell
 
@@ -330,9 +336,10 @@ class Interface:
 					self.console.print("[red]Вы не можете это продать")
 			input()
 
-
-
 	def update(self):
+		self.quest_manager.quests.extend(all_quest)
+		self.quest_manager.load(self.tasks['quests'])
+
 		# Выдача ежедневных заданий #
 		daily_tasks = self.tasks['daily_tasks']['tasks']
 		date_task = self.tasks['daily_tasks']['date']

@@ -107,12 +107,35 @@ class MyConsole:
 				branch_user_tasks.add(f'{_} [yellow]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
 
 		# Квесты #
-		count_quests = len(quests)
+		count_quests = len(self.interface.quest_manager.active_quests)
 
 		if count_quests == 0:
 			branch_quests = tree.add(f'[b red]Квесты[/]\nВозьмите квест в гильдии')
-		else:
-			branch_quests = tree.add(f'[b red]Квесты [{count_daily_tasks}]')
+
+		for active in self.interface.quest_manager.active_quests:
+			# QUEST_NAME 1/3 QUEST_DESCRIPTION
+			c = "green" if active.done else "red"
+			quest_tree = tree.add(
+				f"[{c} b]{active.quest.name} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}"
+			)
+			for sid in active.done_stages:
+				# "[x] STAGE_NAME"
+				stage = active.quest.stages[sid]
+				quest_tree.add(f"[white][[green]x[white]] [green]{stage.name}")
+			# if completed, skip stage progress tree
+			if active.done:
+				continue
+			# "[ ] STAGE_NAME"
+			stage_tree = quest_tree.add(f"[white][ ] [green]{active.stage.name}")
+			for goal in active.goals:
+				# "[ ] GOAL_NAME"
+				#       GOAL_DESCRIPTION
+				mark = "x" if goal.completed else " "
+				stage_tree.add(
+					f"[white][[green]{mark}[white]] [blue]{goal.name}\n"
+					f"[yellow]{goal.description}"
+				)
+
 
 		self.console.print(tree)
 		input()
@@ -161,28 +184,57 @@ class MyConsole:
 		return count
 
 	def print_quests(self, count: int) -> int:
-		quests = self.interface.tasks['quests']
+		# quests = self.interface.tasks['quests']
 
-		self.console.print('[red]Квесты')
-		if len(quests) == 0: print('Вы не добавили задания')
+		if len(self.interface.quest_manager.active_quests) == 0:
+			self.console.print('[red]Квесты')
+			print('Возьмите квест в гильдии')
 
-		for i in range(len(quests)):
-			text, skills = quests[i]
+		for active in self.interface.quest_manager.active_quests:
+			# "[ ] STAGE_NAME"
+			# self.console.print(f"[white][ ] [green]{active.stage.name}")
 
-			if skills is None:
-				self.console.print(f'[white]({count}) {text}')
-			else:
-				self.console.print(f'[white]({count}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
+			# "[ ] GOAL_NAME"
+			#       GOAL_DESCRIPTION
+			"""
+			mark = "v" if goal.completed else " "
 
-			count += 1
 
+			self.console.print(
+				f"[white]({count}) [[green]{mark}[white]] [yellow]{goal.description}  [dim blue]{goal.name}"
+			)
+			"""
+			c = "green" if active.done else "red"
+			tree = Tree(f"[{c} b]{active.quest.name} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
+
+			for sid in active.done_stages:
+				# "[x] STAGE_NAME"
+				stage = active.quest.stages[sid]
+				tree.add(f"[white][[green]x[white]] [green]{stage.name}")
+			# if completed, skip stage progress tree
+			if active.done:
+				continue
+			# "[ ] STAGE_NAME"
+			stage_tree = tree.add(f"[white][ ] [green]{active.stage.name}")
+			for goal in active.goals:
+				# "[ ] GOAL_NAME"
+				#       GOAL_DESCRIPTION
+				mark = "x" if goal.completed else " "
+				stage_tree.add(
+					f"[white]({count}) [[green]{mark}[white]] [blue]{goal.name}\n"
+					f"[yellow]{goal.description}"
+				)
+
+				count += 1
+
+		self.console.print(tree)
 		print()
 		return count
 
 	def print_all_task(self) -> NoReturn:
 		count = self.print_user_tasks()  # Вывод пользовательских заданий
 		count = self.print_daily_tasks(count)  # Вывод ежедневных заданий
-		self.print_quests(count)  # Вывод квестов
+		return self.print_quests(count)  # Вывод квестов
 
 	def print_table_characteristics(self, skills: dict[str: float]):
 		table = Table()
