@@ -1,4 +1,4 @@
-from RPGtask import start_app
+from RPGtask import Interface
 
 if __name__ == '__main__':
-	start_app()
+	Interface()

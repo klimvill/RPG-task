@@ -1,10 +1,9 @@
 from enum import IntEnum
 from typing import Any, NoReturn
 
-from rich.tree import Tree
-
 
 class QuestLevel(IntEnum):
+	""" Уровень квеста. """
 	EASY = 1
 	MEDIUM = 2
 	HARD = 3
@@ -12,7 +11,7 @@ class QuestLevel(IntEnum):
 
 	@staticmethod
 	def description(level):
-		"""Describe the item type"""
+		""" Описание типа квеста """
 		return LEVEL_DESCRIPTIONS[level]
 
 
@@ -40,12 +39,11 @@ class Goal:
 		load(data: bool): Загружает статус выполнения задания.
 		complete(): Отмечает задание выполненным.
 	"""
-
 	def __init__(self, goal: list[str]):
-		self.completed = False
-
-		self.name = goal[0]
+		self.text = goal[0]
 		self.description = goal[1]
+
+		self.completed = False
 
 	def save(self) -> bool:
 		""" Сохраняет статус выполнения задания. """
@@ -55,13 +53,13 @@ class Goal:
 		""" Загружает статус выполнения задания. """
 		self.completed = data
 
-	def complete(self):
+	def complete(self) -> NoReturn:
 		""" Отмечает задание выполненным. """
 		self.completed = True
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
-		return f'<Goal name={self.name!r} completed={self.completed}>'
+		return f'<Goal name={self.text!r} completed={self.completed}>'
 
 
 class Stage:
@@ -73,7 +71,6 @@ class Stage:
 		goals (list[list[str]]): Задания.
 		rewards (list[str]): Награды за выполнение стадии.
 	"""
-
 	def __init__(self, data: dict[str, Any]):
 		self.name: str = data['name']
 		self.goals: list[list[str]] = data['goals']
@@ -95,18 +92,17 @@ class Quest:
 		level (QuestLevel): Сложность квеста.
 		stages (dict[str | int, Stage]): Стадии квеста.
 	"""
-
-	def __init__(self, identifier: str, name: str, description: str, level: QuestLevel,
+	def __init__(self, identifier: str, text: str, description: str, level: QuestLevel,
 				 stages: dict[str | int, dict[str, Any]]):
 		self.id = identifier
-		self.name = name
+		self.text = text
 		self.level = level
 		self.description = description
 		self.stages: dict[str | int, Stage] = {i: Stage(j) for i, j in stages.items()}
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
-		return f'<Quest id={self.id!r} name={self.name!r} stages={len(self.stages)}>'
+		return f'<Quest id={self.id!r} name={self.text!r} stages={len(self.stages)}>'
 
 
 class QuestState:
@@ -127,7 +123,6 @@ class QuestState:
 		complete(num): Завершает задание по его номеру.
 		process_rewards(): Выдаёт награды за прохождение стадии.
 	"""
-
 	def __init__(self, quest: Quest):
 		self.quest = quest
 		self.done_stages: list[str | int] = []
@@ -190,6 +185,10 @@ class QuestState:
 			self.done_stages.append(self.stage_id)
 			self.process_rewards()
 
+	def get_goal(self, num: int) -> Goal:
+		goal = self.goals[num]
+		return goal
+
 	def process_rewards(self):
 		""" Выдаёт награды за прохождение стадии. """
 		rewards = self.rewards
@@ -222,7 +221,6 @@ class QuestManager:
 		complete_goal(num): Выполняет задание из активного квеста по номеру.
 		is_done(): Проверяет выполнено ли задание.
 	"""
-
 	def __init__(self):
 		self.quests: list[Quest] = []
 		self.active_quests: list[QuestState] = []
@@ -300,5 +298,7 @@ class QuestManager:
 			return quest.id in [q.quest.id for q in self.active_quests if q.done]
 		raise ValueError(f"Quest {identifier} not found")
 
+
 	def __repr__(self):
+		""" Возвращает строковое представление объекта. """
 		return f"<QuestManager q={len(self.quests)}>"
