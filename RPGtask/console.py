@@ -1,24 +1,61 @@
+import logging
 import os
 from itertools import groupby
-from typing import Literal, NoReturn, Any, Optional, Callable
+from typing import Any, NoReturn, Literal, Optional
 
 from rich.console import Console
+from rich.logging import RichHandler
 from rich.panel import Panel
-from rich.prompt import Prompt
 from rich.table import Table
 from rich.tree import Tree
 
-from .inventory import ItemType, Slot, Item
-from .utils import get_item, calculate
+from .inventory import Slot, Item, ItemType
+from .player import SkillType, Skill
+from .utils import get_item
 
 
-class MyConsole:
+class AppConsole:
+	"""
+	Класс представляющий консоль.
+
+	Параметры:
+		interface (Interface): Экземпляр главного класса.
+
+	Аргументы:
+		console (Console): Объект консоли.
+
+	Методы:
+		menu(prompt, variants, title, clear): Печатает меню и текст, который предлагает пользователю сделать выбор.
+		panel_print(text, title, title_align, border_style): Печатает текст в 	панели.
+		title(text, clear): Печатает заголовок, в котором обычно находится справочная информация.
+
+		input(): Запрашивает ввод пользователя.
+		print(): Выводит заданные аргументы.
+		clear_console(): Очищает консоль.
+	"""
+
 	def __init__(self, interface):
 		self.interface = interface
-
 		self.console = Console()
 
-	def menu(self, prompt: str, variants: list, title: str, clear: bool = True) -> Any:
+		handler = RichHandler(markup=True, rich_tracebacks=True, console=self.console, tracebacks_show_locals=True)
+		logging.basicConfig(level="NOTSET", format="%(message)s", datefmt="[%X]", handlers=[handler])
+
+		self.log = logging.getLogger('console')
+
+	def menu(self, prompt: str, variants: list, title: str, clear: bool = True) -> str:
+		"""
+		Печатает меню и текст, который предлагает пользователю сделать выбор.
+
+		Аргументы:
+			prompt (str): Текст, который предлагает пользователю сделать выбор.
+			variants (list): Список вариантов выбора.
+			title (str): Заголовок панели меню.
+			clear (bool, optional): Если True очищает консоль перед выводом. По умолчанию True.
+
+		Возвращается:
+			str: Вариант, который выбрал пользователь.
+		"""
 		text_menu = '\n'
 
 		for i, j in enumerate(variants, 1):
@@ -29,275 +66,224 @@ class MyConsole:
 				self.clear_console()
 
 			self.panel_print(text_menu, title)
-			res = Prompt.ask(prompt)
+			res = self.input(prompt)
 
 			if res.isnumeric() and 1 <= int(res) <= len(variants):
 				return res
 
-	def panel_print(self, text: str, title: str,
-					title_align: Literal['left', 'center', 'right'] = 'left',
+	def panel_print(self, text: str, title: str, title_align: Literal['left', 'center', 'right'] = 'left',
 					border_style: str = 'cyan') -> NoReturn:
+		"""
+		Печатает текст в панели.
+
+		Аргументы:
+			text (str): Текст внутри панели.
+			title (str): Заголовок панели.
+			title_align (Literal['left', 'center', 'right'], optional): Расположение заголовка. По умолчанию 'left'.
+			border_style (str, optional): Цвет обводки. По умолчанию 'cyan'.
+		"""
 		self.console.print(Panel(text, title=title, title_align=title_align, border_style=border_style))
 
-	def title(self, text, clear: bool = True) -> NoReturn:
+	def title(self, text: str, clear: bool = True) -> NoReturn:
+		"""
+		Печатает заголовок, в котором обычно находится справочная информация.
+
+		Аргументы:
+			text (str): Текст заголовка
+			clear (bool, optional): Если True очищает консоль перед выводом. По умолчанию True.
+		"""
 		if clear:
 			self.clear_console()
 
 		self.console.print(text, justify='center')
 
-	def print_tree_skills(self, title: str, skills: dict[str: float]) -> NoReturn:
-		tree = Tree(title)
+	def print_tree_skills(self, title: str, skills: dict[SkillType: float], minus: bool = False) -> NoReturn:
+		"""
+		Печатает дерево наград для навыков.
+
+		Аргументы:
+			title (str): Заголовок дерева.
+			skills (dict[str: float]): Ключ — навык, значение — опыт прибавляемый к этому навыку.
+			minus (bool, optional): Если True, то значения выводятся со знаком минус. По умолчанию False.
+		"""
+		tree = Tree(title, guide_style='dim magenta')
+
+		c = '[red]-' if minus else '[green]+'
 
 		for key, value in skills.items():
-			tree.add(f'[magenta]{key.capitalize()} [green]+{round(value, 2)}')
+			tree.add(f'[magenta]{SkillType.description(key.skill_type)} {c}{round(value, 2)}')
 
 		self.console.print(tree)
 
-	def print_task_tree(self) -> NoReturn:
-		user_tasks = self.interface.tasks['user_tasks']
-		daily_tasks = self.interface.tasks['daily_tasks']
-		quests = self.interface.tasks['quests']
+	def print_task_tree(self, view_tree: bool = True) -> NoReturn:
+		"""
+		view_tree - Показывать ли в виде дерева или нет
+		"""
+		user_tasks = self.interface.task_manager.tasks
+		daily_tasks_manager = self.interface.daily_tasks_manager
+		quests = self.interface.quest_manager.active_quests
 
-		tree = Tree('Задания')
+		tree = Tree('Задания', hide_root=view_tree)
 
 		# Пользовательские задания #
 		count_user_tasks = len(user_tasks)
 		end = ''
 
 		if count_user_tasks == 0:
-			branch_user_tasks = tree.add(f'[b green]Пользовательские задания[/]\nВы не добавили задания\n')
+			tree.add('[b green]Пользовательские задания[/]\nВы не добавили задания\n')
+
 		else:
-			branch_user_tasks = tree.add(f'[b green]Пользовательские задания [{count_user_tasks}]')
+			branch_user_tasks = tree.add(f'[b green]Пользовательские задания')
 
-		for i in range(count_user_tasks):
-			if i == count_user_tasks - 1: end = '\n'
+			for num, task in enumerate(user_tasks):
+				if count_user_tasks - 1 == num: end = '\n'
 
-			text, skills = user_tasks[i]
+				text, skills = task.text, task.get_skills_descriptions()
 
-			if skills is None:
-				branch_user_tasks.add(f'[green]{text}' + end)
-			else:
-				branch_user_tasks.add(f'[green]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
+				if skills is None:
+					branch_user_tasks.add(f'[green]{text}' + end)
+				else:
+					branch_user_tasks.add(f'[green]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
 
 		# Ежедневные задания #
-		done = daily_tasks['done']
-		count_daily_tasks = len(daily_tasks['tasks'])
+		count_daily_tasks = daily_tasks_manager.size()
 		end = ''
 
-		if done:
-			branch_user_tasks = tree.add(f'[[green]x[/]] [b yellow]Ежедневные задания')
-		elif count_daily_tasks == 0:
-			branch_user_tasks = tree.add(f'[b yellow]Ежедневные задания[/]\nКончились...\n')
+		if count_daily_tasks == 0:
+			tree.add('[b yellow]Ежедневные задания[/]\nКончились...\n')
+
 		else:
-			branch_user_tasks = tree.add(f'[ ] [b yellow]Ежедневные задания')
+			c = '[green]x[/]' if daily_tasks_manager.done else ' '
+			branch_user_tasks = tree.add(f'[{c}] [b yellow]Ежедневные задания')
 
-		for i in range(count_daily_tasks):
-			if i == count_daily_tasks - 1: end = '\n'
+			for num, data in enumerate(daily_tasks_manager.active_daily_tasks):
+				if count_daily_tasks - 1 == num: end = '\n'
 
-			text, skills, done = daily_tasks['tasks'][i]
+				identifier, complete = data
+				task = self.interface.daily_tasks_manager.get_daily_tasks(num)
 
-			if done:
-				_ = '[dim][[green]x[/]]'
-			else:
-				_ = '[ ]'
+				text, skills = task.text, task.get_skills_descriptions()
 
-			if skills is None:
-				branch_user_tasks.add(f'{_} [yellow]{text}' + end)
-			else:
-				branch_user_tasks.add(f'{_} [yellow]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
+				c = '[dim][[green]x[/]]' if complete else '[ ]'
+
+				if skills is None:
+					branch_user_tasks.add(f'{c} [yellow]{text}' + end)
+				else:
+					branch_user_tasks.add(f'{c} [yellow]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
 
 		# Квесты #
-		count_quests = len(self.interface.quest_manager.active_quests)
+		if len(quests) == 0:
+			tree.add(f'[b red]Квесты[/]\nВозьмите квест в гильдии')
 
-		if count_quests == 0:
-			branch_quests = tree.add(f'[b red]Квесты[/]\nВозьмите квест в гильдии')
+		for active in quests:
+			c = 'green' if active.done else 'red'
 
-		for active in self.interface.quest_manager.active_quests:
-			# QUEST_NAME 1/3 QUEST_DESCRIPTION
-			c = "green" if active.done else "red"
-			quest_tree = tree.add(
-				f"[{c} b]{active.quest.name} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}"
-			)
+			quest_tree = tree.add(f"[{c} b]{active.quest.text} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
+
 			for sid in active.done_stages:
-				# "[x] STAGE_NAME"
 				stage = active.quest.stages[sid]
-				quest_tree.add(f"[white][[green]x[white]] [green]{stage.name}")
-			# if completed, skip stage progress tree
+				quest_tree.add(f'[[green]x[/]] [green]{stage.name}')  # f"[white][[green]x[white]] [green]{stage.name}"
+
 			if active.done:
 				continue
-			# "[ ] STAGE_NAME"
-			stage_tree = quest_tree.add(f"[white][ ] [green]{active.stage.name}")
+
+			stage_tree = quest_tree.add(f"[ ] [green]{active.stage.name}")
 			for goal in active.goals:
-				# "[ ] GOAL_NAME"
-				#       GOAL_DESCRIPTION
-				mark = "x" if goal.completed else " "
+				mark = '[green]x[/]' if goal.completed else ' '
 				stage_tree.add(
-					f"[white][[green]{mark}[white]] [blue]{goal.name}\n"
-					f"[yellow]{goal.description}"
+					f'[{mark}] [blue]{goal.text}\n'
+					f'[yellow]{goal.description}'
 				)
 
-
 		self.console.print(tree)
-		input()
 
 	def print_user_tasks(self, count: int = 1) -> int:
-		user_tasks = self.interface.tasks['user_tasks']
+		user_tasks = self.interface.task_manager.tasks
 
 		self.console.print('[green]Пользовательские задания')
-		if len(user_tasks) == 0: print('Вы не добавили задания')
 
-		for _ in range(len(user_tasks)):
-			text, skills = user_tasks[_]
+		if len(user_tasks) == 0:
+			self.console.print('Вы не добавили задания')
+		else:
+			for task in user_tasks:
+				text, skills = task.text, task.get_skills_descriptions()
 
-			if skills is None:
-				self.console.print(f'[white]({count}) {text}')
-			else:
-				self.console.print(f'[white]({count}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
+				if skills is None:
+					self.console.print(f'[white]({count}) {text}')
+				else:
+					self.console.print(f'[white]({count}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
 
-			count += 1
+				count += 1
 
 		print()
 		return count
 
 	def print_daily_tasks(self, count: int) -> int:
-		daily_tasks = self.interface.tasks['daily_tasks']
+		daily_tasks = self.interface.daily_tasks_manager.active_daily_tasks
 
 		self.console.print('[yellow]Ежедневные задания')
-		if len(daily_tasks) == 0: print('Вы не добавили задания')
 
-		for i in range(len(daily_tasks)):
-			text, skills, done = daily_tasks['tasks'][i]
+		if len(daily_tasks) == 0:
+			self.console.print('Кончились...')
 
-			if done:
-				_ = '[dim][[green]x[/]]'
-			else:
-				_ = '[ ]'
+		else:
+			for num, data in enumerate(daily_tasks):
+				task = self.interface.daily_tasks_manager.get_daily_tasks(num)
+				identifier, complete = data
 
-			if skills is None:
-				self.console.print(f'[white]({count}) {_} {text}')
-			else:
-				self.console.print(f'[white]({count}) {_} {text}  [dim cyan]Навыки: {", ".join(skills)}')
+				text, skills = task.text, task.get_skills_descriptions()
 
-			count += 1
+				c = '[dim][[green]x[/]]' if complete else '[ ]'
+
+				if skills is None:
+					self.console.print(f'[white]({count}) {c} {text}')
+				else:
+					self.console.print(f'[white]({count}) {c} {text}  [dim cyan]Навыки: {", ".join(skills)}')
+
+				count += 1
 
 		print()
 		return count
 
 	def print_quests(self, count: int) -> int:
-		# quests = self.interface.tasks['quests']
+		active_quests = self.interface.quest_manager.active_quests
 
-		if len(self.interface.quest_manager.active_quests) == 0:
-			self.console.print('[red]Квесты')
-			print('Возьмите квест в гильдии')
+		self.console.print('[red]Квесты')
 
-		for active in self.interface.quest_manager.active_quests:
-			# "[ ] STAGE_NAME"
-			# self.console.print(f"[white][ ] [green]{active.stage.name}")
+		if len(active_quests) == 0:
+			self.console.print('Возьмите квест в гильдии')
+			return count
 
-			# "[ ] GOAL_NAME"
-			#       GOAL_DESCRIPTION
-			"""
-			mark = "v" if goal.completed else " "
-
-
-			self.console.print(
-				f"[white]({count}) [[green]{mark}[white]] [yellow]{goal.description}  [dim blue]{goal.name}"
-			)
-			"""
+		for active in active_quests:
 			c = "green" if active.done else "red"
-			tree = Tree(f"[{c} b]{active.quest.name} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
+			tree = Tree(
+				f"[{c} b]{active.quest.text} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
 
 			for sid in active.done_stages:
-				# "[x] STAGE_NAME"
 				stage = active.quest.stages[sid]
 				tree.add(f"[white][[green]x[white]] [green]{stage.name}")
-			# if completed, skip stage progress tree
+
 			if active.done:
 				continue
-			# "[ ] STAGE_NAME"
+
 			stage_tree = tree.add(f"[white][ ] [green]{active.stage.name}")
 			for goal in active.goals:
-				# "[ ] GOAL_NAME"
-				#       GOAL_DESCRIPTION
 				mark = "x" if goal.completed else " "
 				stage_tree.add(
-					f"[white]({count}) [[green]{mark}[white]] [blue]{goal.name}\n"
+					f"[white]({count}) [[green]{mark}[white]] [blue]{goal.text}\n"
 					f"[yellow]{goal.description}"
 				)
 
 				count += 1
 
 		self.console.print(tree)
-		print()
 		return count
 
-	def print_all_task(self) -> NoReturn:
-		count = self.print_user_tasks()  # Вывод пользовательских заданий
-		count = self.print_daily_tasks(count)  # Вывод ежедневных заданий
-		return self.print_quests(count)  # Вывод квестов
-
-	def print_table_characteristics(self, skills: dict[str: float]):
-		table = Table()
-
-		table.add_column('Навык', style='magenta')
-		table.add_column('Уровень', style='cyan')
-		table.add_column('Опыт', style='green')
-		table.add_column('Бонус')
-
-		for skill, item in skills.items():
-			bonus = calculate(self.interface.inventory, skill, percent=True)
-
-			if bonus == 0: bonus = '[dim]0%'
-			elif bonus > 1: bonus = f'[green]+{bonus}%'
-			else: bonus = f'[red]{bonus}%'
-
-			table.add_row(skill.capitalize(), str(round(item[0], 2)), str(round(item[1], 2)), bonus)
-
-		self.console.print(table)
-
-	def print_table_price(self):
-		hero_info = self.interface.hero_info
-		skills = hero_info['skills']
-		table = Table()
-
-		table.add_column('№')
-		table.add_column('Навык', style='magenta')
-		table.add_column('Уровень', style='cyan', justify='center')
-		table.add_column('Мин. опыт', style='red')
-		table.add_column('Стоимость', style='yellow')
-
-		gold = float(hero_info['money'])
-		count = 1
-
-		for skill, item in skills.items():
-			lvl, skill_exp = item
-
-			demand_exp, demand_gold = self.interface.awards.get_price_skill(lvl)
-
-			if lvl == 0:
-				demand_exp, demand_gold = 0.25, 0.1
-			elif lvl == 1:
-				demand_exp, demand_gold = 0.5, 0.25
-
-			if skill_exp >= demand_exp and gold >= demand_gold:
-				table.add_row(
-					f'{count}',
-					skill.capitalize(),
-					f'{lvl}',
-					f'[green]{demand_exp} ({round(skill_exp, 2)})',
-					f'{demand_gold}'
-				)
-			else:  # Поскольку пользователь не может купить улучшение оно затемнено
-				table.add_row(
-					f'{count}',
-					f'[dim]{skill.capitalize()}',
-					f'[dim]{lvl}',
-					f'[dim]{demand_exp} ({round(skill_exp, 2)})',
-					f'[dim]{demand_gold}'
-				)
-			count += 1
-
-		self.console.print(table)
+	def print_all_task(self) -> tuple[int, int, int]:
+		user_tasks_count = self.print_user_tasks()
+		daily_tasks_count = self.print_daily_tasks(user_tasks_count)
+		quests_count = self.print_quests(daily_tasks_count)
+		return user_tasks_count, daily_tasks_count, quests_count
 
 	def print_item_tree(self, items: list[Item]) -> NoReturn:
 		tree = Tree('\n[bold cyan]Вы нашли предметы:')
@@ -307,37 +293,76 @@ class MyConsole:
 
 		self.console.print(tree)
 
+	def print_table_price(self, gold: float, skills: list[Skill]):
+		count = 1
+		table = Table()
+
+		table.add_column('№')
+		table.add_column('Навык', style='magenta')
+		table.add_column('Уровень', style='cyan', justify='center')
+		table.add_column('Мин. опыт', style='red')
+		table.add_column('Стоимость', style='yellow')
+
+		for skill in skills:
+			level, exp = skill.level, skill.exp
+
+			demand_exp, demand_gold = self.interface.awards_manager.get_price_skill(level)
+
+			if exp >= demand_exp and gold >= demand_gold:
+				table.add_row(
+					f'{count}',
+					SkillType.description(skill.skill_type),
+					f'{level}',
+					f'[green]{demand_exp} ({round(exp, 2)})',
+					f'{demand_gold}'
+				)
+			else:  # Поскольку пользователь не может купить улучшение оно затемнено
+				table.add_row(
+					f'{count}',
+					f'[dim]{SkillType.description(skill.skill_type)}',
+					f'[dim]{level}',
+					f'[dim]{demand_exp} ({round(exp, 2)})',
+					f'[dim]{demand_gold}'
+				)
+			count += 1
+
+		self.console.print(table)
+
 	def presence_item(self, item: Item):
 		"""
-		Presents the information of the given item to the user interface.
+		Отображает информацию о предмете.
 
-		Args:
-			item (Item): The item to present.
+		Аргументы:
+			item (Item): Предмет информацию, о котором надо вывести.
 		"""
 
-		def get_effects_string(effects: dict[str, int]) -> str:
+		def get_effects_string(effects: dict[str | int, float]) -> str:
 			if not effects:
 				return "[b red]Эффектов нет[/]\n"
-			result = "[b red]Эффекты[/]:\n"
+
+			effects_str = "[b red]Эффекты[/]:\n"
 			for key, value in effects.items():
 				if value > 1:
-					result += f"    {key}: [green]+{int(value * 100 - 100)}%[/]\n"
+					effects_str += f"    {SkillType.description(key)}: [green]+{int(value * 100 - 100)}%[/]\n"
 				else:
-					result += f"    {key}: [red]{int(value * 100 - 100)}%[/]\n"
-			return result
+					effects_str += f"    {SkillType.description(key)}: [red]{int(value * 100 - 100)}%[/]\n"
+			return effects_str
+
 
 		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"
 		effects_info = get_effects_string(item.effects)
-		sell_info = (
-			f"[b yellow]Цена продажи[/]: {item.sell}\n"
-			if item.sell > 0
-			else "[b yellow]Ничего не стоит[/]\n"
-		)
 		cost_info = (
 			f"[b yellow]Цена покупки[/]: {item.cost}\n"
 			if item.cost > 0
 			else "[b yellow]Не продается[/]\n"
 		)
+		sell_info = (
+			f"[b yellow]Цена продажи[/]: {item.sell}"
+			if item.sell > 0
+			else "[b yellow]Ничего не стоит[/]"
+		)
+
+
 		result = f"[purple b]{item.name}[/] - [white]{item.description}\n"
 		result += item_type_info
 		result += effects_info
@@ -345,46 +370,43 @@ class MyConsole:
 		result += sell_info
 		self.console.print(result)
 
-	def show_item(
-			self, slot: Slot, show_amount=True, additional: Optional[Callable] = None
-	):
+	@staticmethod
+	def show_item(slot: Slot, show_amount=True) -> str:
 		"""
-		Generates a string representation of the item in the given slot.
+		Генерирует строковое представление предмета в заданном слоте.
 
-		Args:
-			slot (Slot): The slot containing the item.
-			show_amount (bool, optional): Whether to display the amount of the item. Defaults to True.
-			additional (callable, optional): Additional information to display about the item. Defaults to None.
+		Аргументы:
+			slot (Slot): Ячейка, содержащая элемент.
+			show_amount (bool, optional): Следует ли отображать количество товара. По умолчанию True.
 
-		Returns:
-			str: The generated string representation of the item.
+		Возвращает:
+			str: Сгенерированное строковое представление предмета.
 		"""
 		if slot.empty:
 			return "[yellow]-[/] "
+
 		item = get_item(slot.id)
 		text = ""
 		if show_amount:
 			text += f"[white]{slot.amount}x"
 		text += f"[green]{item.name}[/] "
-		if additional:
-			text += additional(item)
+
 		return text
 
-	def show_inventory(
-			self,
-			show_number=True,
-			show_amount=False,
-			allow: Optional[list[ItemType]] = None,
-			inverse: bool = False,
-	):
+	def show_inventory(self,
+					   show_number=True,
+					   show_amount=False,
+					   allow: Optional[list[ItemType]] = None,
+					   inverse: bool = False,
+					   ):
 		"""
-		Presents the player's inventory to the user interface.
+		Отображает инвентарь игрока.
 
-		Args:
-			show_number (bool, optional): Whether to display numbers for each item. Defaults to False.
-			show_amount (bool, optional): Whether to display the amount of each item. Defaults to True.
-			allow (list[ItemType], optional): The list of allowed item types to display. Defaults to None.
-			inverse (bool, optional): Whether to display items not in the allowed list. Defaults to False.
+		Аргументы:
+			show_number (bool, optional): Следует ли отображать номера для каждого элемента. По умолчанию True.
+			show_amount (bool, optional): Следует ли отображать количество каждого товара. По умолчанию False.
+			allow (list[ItemType], optional): Список разрешенных для отображения типов элементов. По умолчанию None.
+			inverse (bool, optional): Отображать ли элементы, которых нет в списке разрешенных. По умолчанию False.
 		"""
 		inventory = self.interface.inventory
 
@@ -392,12 +414,11 @@ class MyConsole:
 		counter = 1
 		for slot_type, slots in grouped_slots:
 			if allow:
-				# whitelist
 				if not inverse and slot_type not in allow:
 					continue
-				# blacklist
 				if inverse and slot_type in allow:
 					continue
+
 			self.console.print("[yellow b]" + ItemType.description(slot_type), end=" ")
 			for slot in slots:
 				if show_number:
@@ -407,12 +428,14 @@ class MyConsole:
 			self.console.print()
 
 	def input(self, *args, **kwargs) -> Any:
+		""" Запрашивает ввод пользователя. """
 		return self.console.input(*args, **kwargs)
 
 	def print(self, *args, **kwargs) -> NoReturn:
-		"""Prints the given arguments."""
+		""" Выводит заданные аргументы. """
 		self.console.print(*args, **kwargs, highlight=False)
 
 	@staticmethod
-	def clear_console():
+	def clear_console() -> NoReturn:
+		""" Очищает консоль. """
 		os.system('cls')

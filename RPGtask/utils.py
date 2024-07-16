@@ -1,23 +1,27 @@
 from pyxdameraulevenshtein import damerau_levenshtein_distance
 
-from .data.items import all_items
+from .content import all_items
 from .inventory import Item, ItemType, Inventory
+from .player import SKILL_DESCRIPTIONS, SkillType
 
 
-def skill_check(skill: str, hero_info) -> str | None:
-	"""
-	Проверка на ошибки при записи навыков
-	"""
-	skills_list = list(hero_info['skills'].keys())
-
-	for correct_skill in skills_list:
-		number = damerau_levenshtein_distance(skill.lower(), correct_skill)
+def skill_check(skill: str) -> SkillType | None:
+	""" Проверка на ошибки при записи навыков """
+	for d, correct_skill in SKILL_DESCRIPTIONS.items():
+		number = damerau_levenshtein_distance(skill.lower(), correct_skill.lower())
 		if number < 3:  # Считаем что разница в 2 символа и меньше еще нормальная
-			return correct_skill
+			return d
 	return None
 
 
 def get_item(identifier: str | Item) -> Item:
+	"""
+	Получение предмета по идентификатору.
+
+	Аргументы:
+		identifier (Union[str, Item]): идентификатор предмета.
+	"""
+
 	if isinstance(identifier, Item):
 		return identifier
 
@@ -31,7 +35,16 @@ def get_item(identifier: str | Item) -> Item:
 	raise ValueError(f"Item {identifier} not found")
 
 
-def calculate(inventory: Inventory, skill: str, percent: bool = False):
+def calculate_item_bonus(inventory: Inventory, skill: SkillType, percent: bool = False) -> int:
+	"""
+	Считает бонусы предметов к навыку.
+
+	Аргументы:
+		inventory (Inventory): объект инвентаря.
+		skill (SkillType): тип навыка, бонус к которому мы считаем.
+		percent (bool): Если True, то возвращаем результат в виде процента, иначе в десятичном виде.
+	"""
+
 	result: int = int(not percent)
 
 	for _, slot in inventory.get(ItemType.ITEM, True):

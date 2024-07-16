@@ -1,1 +1,1 @@
-from .main import start_app
+from .interface import Interface

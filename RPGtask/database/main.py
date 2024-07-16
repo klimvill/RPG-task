@@ -1,12 +1,13 @@
-from os import path
 import json
+from os import path
+from typing import Any
 
-from .hero import save_hero_info
-from .tasks import save_tasks
+from ..player import SkillType
 
 base_path = path.dirname(__file__)
+task_path = path.abspath(path.join(base_path, "..", "data/tasks.json"))
+hero_path = path.abspath(path.join(base_path, "..", "data/player.json"))
 inventory_path = path.abspath(path.join(base_path, "..", "data/inventory.json"))
-quests_path = path.abspath(path.join(base_path, "..", "data/quests_data.json"))
 
 
 def all_save(tasks, hero_info, inventory):
@@ -15,8 +16,25 @@ def all_save(tasks, hero_info, inventory):
 	save_read_inventory(inventory)
 
 
-def read_inventory():
-	with open(inventory_path, "r", encoding='utf-8') as file:
+def save_tasks(data):
+	with open(task_path, "w", encoding='utf-8') as file:
+		json.dump(data, file, ensure_ascii=False)
+
+
+def read_tasks() -> dict[str, list[list[str | list[SkillType] | None]] |
+							  dict[str, str | bool | list[list[str, bool]]] |
+							  dict[str, bool | list[list[str | int] | list[Any] | Any]]]:
+	with open(task_path, "r", encoding='utf-8') as file:
+		return json.load(file)
+
+
+def save_hero_info(data):
+	with open(hero_path, "w", encoding='utf-8') as file:
+		json.dump(data, file, ensure_ascii=False)
+
+
+def read_player_info() -> dict[str, float | list[list[int | float]]]:
+	with open(hero_path, "r", encoding='utf-8') as file:
 		return json.load(file)
 
 
@@ -25,13 +43,6 @@ def save_read_inventory(data):
 		json.dump(data, file, ensure_ascii=False)
 
 
-def read_quests():
-	with open(quests_path, "r", encoding='utf-8') as file:
+def read_inventory():
+	with open(inventory_path, "r", encoding='utf-8') as file:
 		return json.load(file)
-
-
-def save_quests(data):
-	with open(quests_path, "w", encoding='utf-8') as file:
-		json.dump(data, file, ensure_ascii=False)
-
-

@@ -3,38 +3,33 @@ from typing import NoReturn, Self
 
 
 class ItemType(IntEnum):
-	"""
-	Тип предметы в игре
-	"""
+	""" Типы предметов. """
 	ITEM = 0  # Предмет
 
+	# Если потребуется изменить, то надо также поменять is_wearable в Item
 	HELMET = 1  # Шлем
 	BREASTPLATE = 2  # Нагрудник
 	LEGGINGS = 3  # Поножи
 	BOOTS = 4  # Ботинки
-	RING = 5  # Кольцо
-	AMULET = 6  # Амулет
-	"""
-	# Если потребуется изменить, то надо также поменять is_wearable в Item
-	GLOVES = 5  "Перчатки",
-	SHIELD = 6  "Щит",
-	WEAPON = 7  "Оружие",
-	"""
+	WEAPON = 5  # Оружие
+	RING = 6  # Кольцо
+	AMULET = 7  # Амулет
 
 	@staticmethod
-	def description(item_type):
-		"""Describe the item type"""
+	def description(item_type) -> str:
+		""" Описание типа предмета """
 		return ITEM_DESCRIPTIONS[item_type]
 
 
 ITEM_DESCRIPTIONS = {
-	ItemType.ITEM: "Предметы",
-	ItemType.HELMET: "Шлем",
-	ItemType.BREASTPLATE: "Нагрудник",
-	ItemType.LEGGINGS: "Поножи",
-	ItemType.BOOTS: "Ботинки",
-	ItemType.RING: "Кольцо",
-	ItemType.AMULET: "Амулет",
+	ItemType.ITEM: 'Предметы',
+	ItemType.HELMET: 'Шлем',
+	ItemType.BREASTPLATE: 'Нагрудник',
+	ItemType.LEGGINGS: 'Поножи',
+	ItemType.BOOTS: 'Ботинки',
+	ItemType.WEAPON: 'Оружие',
+	ItemType.RING: 'Кольцо',
+	ItemType.AMULET: 'Амулет',
 }
 
 
@@ -72,7 +67,7 @@ class Item:
 
 		self.stack: int = 1
 		self.type: ItemType = ItemType.ITEM
-		self.effects: dict[str, float] = {}
+		self.effects: dict[str | int, float] = {}
 		self.sell: float = 0
 		self.cost: float = 0
 		self.possible_sell: bool = True
@@ -95,12 +90,12 @@ class Item:
 		"""
 		self.type = item_type
 
-	def set_effect(self, action: str, amount: float) -> NoReturn:
+	def set_effect(self, action: str | int, amount: float) -> NoReturn:
 		"""
 		Задаёт эффект от использования предмета.
 
 		Аргументы:
-			action (str): Действие, выполняемое при использовании предмета.
+			action (str | int): Действие, выполняемое при использовании предмета.
 			amount (int): Величина эффекта.
 		"""
 		self.effects[action] = amount
@@ -109,11 +104,9 @@ class Item:
 		"""
 		Задаёт стоимость продажи и покупки.
 
-		# todo: Посмотреть нужна ли механика с -1
-
 		Аргументы:
-			cost (int): Стоимость покупки.
-			sell (int): Стоимость продажи. Если равняется -1, то предмет нельзя продать. По умолчанию -1
+			cost (int): Цена покупки.
+			sell (int): Цена продажи. Если равняется -1, то предмет нельзя продать. По умолчанию -1.
 		"""
 		self.cost = cost
 
@@ -282,6 +275,7 @@ class Inventory:
 				Slot(ItemType.BREASTPLATE),
 				Slot(ItemType.LEGGINGS),
 				Slot(ItemType.BOOTS),
+				Slot(ItemType.WEAPON),
 				Slot(ItemType.RING),
 				Slot(ItemType.RING),
 				Slot(ItemType.AMULET),
@@ -360,7 +354,6 @@ class Inventory:
 	def count_all(self) -> int:
 		""" Возвращает количество всех предметов в инвентаре. """
 		return sum(slot.amount for slot in self.slots)
-
 
 	def __repl__(self):
 		""" Возвращает строковое представление инвентаря. """
