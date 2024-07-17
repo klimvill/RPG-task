@@ -13,6 +13,7 @@ class Task:
 
 	Методы:
 		save(): Возвращает информацию для сохранения задачи.
+		get_skills_descriptions(): Возвращает текстовое представление навыков задачи.
 	"""
 
 	def __init__(self, text: str, skills: list[SkillType] | None):
@@ -24,6 +25,7 @@ class Task:
 		return [self.text, self.skills]
 
 	def get_skills_descriptions(self) -> list[str] | None:
+		""" Возвращает текстовое представление навыков задачи. """
 		if self.skills is None:
 			return None
 		return list(map(lambda skill: SkillType.description(skill), self.skills))

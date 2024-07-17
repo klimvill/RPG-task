@@ -22,7 +22,7 @@ class ItemType(IntEnum):
 
 
 ITEM_DESCRIPTIONS = {
-	ItemType.ITEM: 'Предметы',
+	ItemType.ITEM: 'Предмет',
 	ItemType.HELMET: 'Шлем',
 	ItemType.BREASTPLATE: 'Нагрудник',
 	ItemType.LEGGINGS: 'Поножи',
@@ -67,7 +67,7 @@ class Item:
 
 		self.stack: int = 1
 		self.type: ItemType = ItemType.ITEM
-		self.effects: dict[str | int, float] = {}
+		self.effects: dict[str | int, str | float] = {}
 		self.sell: float = 0
 		self.cost: float = 0
 		self.possible_sell: bool = True
@@ -90,7 +90,7 @@ class Item:
 		"""
 		self.type = item_type
 
-	def set_effect(self, action: str | int, amount: float) -> NoReturn:
+	def set_effect(self, action: str | int, amount: str | float) -> NoReturn:
 		"""
 		Задаёт эффект от использования предмета.
 

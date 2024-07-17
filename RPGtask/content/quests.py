@@ -8,7 +8,7 @@ forgotten_city = Quest('forgotten_city', 'Забытый город', 'Иссл�
 							   },
 						   2: {'name': 'Выполните первое задание',
 							   'goals': [['Ох, уж эти гоблины!', 'Победите гоблинов']],
-							   'rewards': ['end']
+							   'rewards': ['end', {'gold': 12, 'items': ['brodie_helmet', 'amulet_phosphophyllite']}]
 							   },
 					   })
 
