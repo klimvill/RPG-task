@@ -121,6 +121,7 @@ class QuestState:
 		save(): Сохраняет состояние квеста.
 		load(): Загружает состояние квеста.
 		complete(num): Завершает задание по его номеру.
+		get_goal(num): Получение задания по номеру.
 		process_rewards(): Выдаёт награды за прохождение стадии.
 	"""
 	def __init__(self, quest: Quest):
@@ -186,10 +187,11 @@ class QuestState:
 			self.process_rewards()
 
 	def get_goal(self, num: int) -> Goal:
+		""" Получение задания по номеру. """
 		goal = self.goals[num]
 		return goal
 
-	def process_rewards(self):
+	def process_rewards(self) -> dict | NoReturn:
 		""" Выдаёт награды за прохождение стадии. """
 		rewards = self.rewards
 
@@ -198,6 +200,8 @@ class QuestState:
 			self.update(new_stage)
 		elif rewards[0] == 'end':
 			self.done = True
+			return rewards[1]
+
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
@@ -298,6 +302,11 @@ class QuestManager:
 			return quest.id in [q.quest.id for q in self.active_quests if q.done]
 		raise ValueError(f"Quest {identifier} not found")
 
+	def quest_been_launched(self, identifier: str) -> bool:
+		return bool(self.active_quests)
+
+	def clear_active_quest(self):
+		self.active_quests = []
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """

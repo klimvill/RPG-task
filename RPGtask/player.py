@@ -42,9 +42,6 @@ class Gold:
 
 		Аргументы:
 			num (float): Сумма, на которую уменьшится капитал.
-
-		Возвращается:
-			bool: True если покупка совершенна, иначе False.
 		"""
 		if self.gold > num:
 			self.gold -= num

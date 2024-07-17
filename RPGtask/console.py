@@ -9,6 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
+from .content import all_quest_items
 from .inventory import Slot, Item, ItemType
 from .player import SkillType, Skill
 from .utils import get_item
@@ -156,20 +157,16 @@ class AppConsole:
 			c = '[green]x[/]' if daily_tasks_manager.done else ' '
 			branch_user_tasks = tree.add(f'[{c}] [b yellow]Ежедневные задания')
 
-			for num, data in enumerate(daily_tasks_manager.active_daily_tasks):
+			for num, task in enumerate(daily_tasks_manager.active_daily_tasks):
 				if count_daily_tasks - 1 == num: end = '\n'
 
-				identifier, complete = data
-				task = self.interface.daily_tasks_manager.get_daily_tasks(num)
+				skills = task.get_skills_descriptions()
 
-				text, skills = task.text, task.get_skills_descriptions()
-
-				c = '[dim][[green]x[/]]' if complete else '[ ]'
-
+				c = '[dim][[green]x[/]]' if task.done else '[ ]'
 				if skills is None:
-					branch_user_tasks.add(f'{c} [yellow]{text}' + end)
+					branch_user_tasks.add(f'{c} [yellow]{task.text}' + end)
 				else:
-					branch_user_tasks.add(f'{c} [yellow]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
+					branch_user_tasks.add(f'{c} [yellow]{task.text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
 
 		# Квесты #
 		if len(quests) == 0:
@@ -178,7 +175,8 @@ class AppConsole:
 		for active in quests:
 			c = 'green' if active.done else 'red'
 
-			quest_tree = tree.add(f"[{c} b]{active.quest.text} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
+			quest_tree = tree.add(
+				f"[{c} b]{active.quest.text} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
 
 			for sid in active.done_stages:
 				stage = active.quest.stages[sid]
@@ -227,18 +225,14 @@ class AppConsole:
 			self.console.print('Кончились...')
 
 		else:
-			for num, data in enumerate(daily_tasks):
-				task = self.interface.daily_tasks_manager.get_daily_tasks(num)
-				identifier, complete = data
+			for task in self.interface.daily_tasks_manager.active_daily_tasks:
+				skills = task.get_skills_descriptions()
 
-				text, skills = task.text, task.get_skills_descriptions()
-
-				c = '[dim][[green]x[/]]' if complete else '[ ]'
-
+				c = '[dim][[green]x[/]]' if task.done else '[ ]'
 				if skills is None:
-					self.console.print(f'[white]({count}) {c} {text}')
+					self.console.print(f'[white]({count}) {c} {task.text}')
 				else:
-					self.console.print(f'[white]({count}) {c} {text}  [dim cyan]Навыки: {", ".join(skills)}')
+					self.console.print(f'[white]({count}) {c} {task.text}  [dim cyan]Навыки: {", ".join(skills)}')
 
 				count += 1
 
@@ -293,6 +287,14 @@ class AppConsole:
 
 		self.console.print(tree)
 
+	def print_tree_shop_quest(self, view_tree: bool = False):
+		tree = Tree('[magenta]Доска квестов', hide_root=view_tree)
+
+		for num, quest_item in enumerate(all_quest_items, 1):
+			tree.add(f'[white]({num}) {quest_item.name} [yellow]Цена: {quest_item.cost}')
+
+		self.console.print(tree)
+
 	def print_table_price(self, gold: float, skills: list[Skill]):
 		count = 1
 		table = Table()
@@ -342,12 +344,15 @@ class AppConsole:
 
 			effects_str = "[b red]Эффекты[/]:\n"
 			for key, value in effects.items():
-				if value > 1:
+				if key == 'quest':
+					quest = self.interface.quest_manager.get_quest(value)
+					effects_str += f'    Запускает квест: [green]{quest.text.lower()}[/]\n'
+
+				elif value > 1:
 					effects_str += f"    {SkillType.description(key)}: [green]+{int(value * 100 - 100)}%[/]\n"
 				else:
 					effects_str += f"    {SkillType.description(key)}: [red]{int(value * 100 - 100)}%[/]\n"
 			return effects_str
-
 
 		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"
 		effects_info = get_effects_string(item.effects)
@@ -362,8 +367,7 @@ class AppConsole:
 			else "[b yellow]Ничего не стоит[/]"
 		)
 
-
-		result = f"[purple b]{item.name}[/] - [white]{item.description}\n"
+		result = f"[purple b]{item.name}[/] - [white]{item.description}[/]\n"
 		result += item_type_info
 		result += effects_info
 		result += cost_info
@@ -394,8 +398,8 @@ class AppConsole:
 		return text
 
 	def show_inventory(self,
-					   show_number=True,
-					   show_amount=False,
+					   show_number: bool = True,
+					   show_amount: bool = False,
 					   allow: Optional[list[ItemType]] = None,
 					   inverse: bool = False,
 					   ):

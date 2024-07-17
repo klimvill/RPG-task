@@ -51,7 +51,7 @@ class AwardsManager:
 
 		return gold, skills_exp, items
 
-	def get_rewards_daily_tasks(self) -> tuple[int, dict, list | list[Item]]:
+	def get_rewards_daily_tasks(self, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
 		gold, skills_exp, items = 0, {}, []
 		sum_all_skills = self.interface.player.sum_level()
 		if sum_all_skills < DIVISOR_SUM_LEVELS:
@@ -76,7 +76,7 @@ class AwardsManager:
 				else:
 					skills_exp[skill] = exp
 
-			if self.rnd.choices([False, True], weights=[0.95, 0.05])[0]:
+			if self.rnd.choices([False, True], weights=[0.95, 0.05])[0] and need_items:
 				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=[0.7, 0.25, 0.05])[0]
 				identifier = self.rnd.choice(list(all_items[item_lvl].keys()))
 				item = all_items[item_lvl][identifier]

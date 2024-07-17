@@ -1,14 +1,11 @@
 from ..inventory import Item, ItemType
 from ..player import SkillType
 
-# Зелья #
-# Medicine
-...
-# Potion
-...
-# Elixir
-...
-
+######################################           Квесты           ######################################################
+quest = Item('quest', 'Квест', 'Квест')
+quest.set_type(ItemType.ITEM)
+quest.set_effect('quest', 'forgotten_city')
+quest.set_cost(200)
 
 #################################           Шлемы - 1 уровень           ################################################
 ragged_hood = Item('ragged_hood', 'Рванный капюшон', 'кусок ткани, который можно носить на голове.')
@@ -32,7 +29,6 @@ tin_helmet.set_type(ItemType.HELMET)
 tin_helmet.set_effect(SkillType.POWER, 1.1)
 tin_helmet.set_cost(5, 3)
 
-
 #################################           Шлемы - 2 уровень           ################################################
 steel_helmet = Item('steel_helmet', 'Стальной шлем', 'в таких ходят главари разбойников.')
 steel_helmet.set_type(ItemType.HELMET)
@@ -54,7 +50,6 @@ pink_ribbon.set_effect(SkillType.ART, 1.1)
 pink_ribbon.set_effect(SkillType.FINANCE, 1.05)
 pink_ribbon.set_cost(50, 25)
 
-
 #################################           Шлемы - 3 уровень           ################################################
 straw_hat = Item('straw_hat', 'Соломенная шляпа', 'шляпа настоящего искателя приключений.')
 straw_hat.set_type(ItemType.HELMET)
@@ -70,8 +65,6 @@ stahlhelm.set_effect(SkillType.ENDURANCE, 1.2)
 stahlhelm.set_effect(SkillType.POWER, 1.2)
 stahlhelm.set_cost(500, 250)
 
-
-
 #################################           Оружие - 1 уровень           ###############################################
 #################################           Оружие - 2 уровень           ###############################################
 #################################           Оружие - 3 уровень           ###############################################
@@ -82,15 +75,12 @@ arisaka_type_38.set_effect(SkillType.ENDURANCE, 1.3)
 arisaka_type_38.set_effect(SkillType.CRAFT, 1.3)
 arisaka_type_38.set_cost(500, 250)
 
-
-
 #################################           Кольца - 1 уровень           ###############################################
 silver_ring = Item('silver_ring', 'Серебряное кольцо', 'обычное, ничем не примечательное украшение.')
 silver_ring.set_type(ItemType.RING)
 silver_ring.set_effect(SkillType.LANGUAGES, 1.03)
 silver_ring.set_effect(SkillType.FINANCE, 1.03)
 silver_ring.set_cost(10, 5)
-
 
 #################################           Кольца - 2 уровень           ###############################################
 ring_euclase = Item('ring_euclase', 'Кольцо с эвклазом',
@@ -99,7 +89,6 @@ ring_euclase.set_type(ItemType.RING)
 ring_euclase.set_effect(SkillType.SCIENCE, 1.2)
 ring_euclase.set_effect(SkillType.FINANCE, 1.3)
 ring_euclase.set_cost(100, 50)
-
 
 #################################           Кольца - 3 уровень           ###############################################
 phantom_ring = Item('phantom_ring', 'Фантомное кольцо',
@@ -110,8 +99,6 @@ phantom_ring.set_effect(SkillType.LANGUAGES, 1.3)
 phantom_ring.set_effect(SkillType.FINANCE, 1.2)
 phantom_ring.set_effect(SkillType.CRAFT, 1.2)
 phantom_ring.set_cost(600, 300)
-
-
 
 #################################           Амулеты - 1 уровень           ##############################################
 #################################           Амулеты - 2 уровень           ##############################################
@@ -125,8 +112,6 @@ amulet_phosphophyllite.set_effect(SkillType.ART, 1.2)
 amulet_phosphophyllite.set_effect(SkillType.INTELLECT, 0.8)
 amulet_phosphophyllite.set_cost(500, 250)
 
-
-
 all_items = {
 	'one': {
 		'ragged_hood': ragged_hood,
@@ -135,6 +120,8 @@ all_items = {
 		'tin_helmet': tin_helmet,
 
 		'silver_ring': silver_ring,
+
+		'quest': quest
 	},
 	'two': {
 		'steel_helmet': steel_helmet,
@@ -154,3 +141,7 @@ all_items = {
 		'amulet_phosphophyllite': amulet_phosphophyllite,
 	}
 }
+
+all_quest_items = [
+	quest,
+]
