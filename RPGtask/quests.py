@@ -39,6 +39,7 @@ class Goal:
 		load(data: bool): Загружает статус выполнения задания.
 		complete(): Отмечает задание выполненным.
 	"""
+
 	def __init__(self, goal: list[str]):
 		self.text = goal[0]
 		self.description = goal[1]
@@ -71,6 +72,7 @@ class Stage:
 		goals (list[list[str]]): Задания.
 		rewards (list[str]): Награды за выполнение стадии.
 	"""
+
 	def __init__(self, data: dict[str, Any]):
 		self.name: str = data['name']
 		self.goals: list[list[str]] = data['goals']
@@ -92,6 +94,7 @@ class Quest:
 		level (QuestLevel): Сложность квеста.
 		stages (dict[str | int, Stage]): Стадии квеста.
 	"""
+
 	def __init__(self, identifier: str, text: str, description: str, level: QuestLevel,
 				 stages: dict[str | int, dict[str, Any]]):
 		self.id = identifier
@@ -124,6 +127,7 @@ class QuestState:
 		get_goal(num): Получение задания по номеру.
 		process_rewards(): Выдаёт награды за прохождение стадии.
 	"""
+
 	def __init__(self, quest: Quest):
 		self.quest = quest
 		self.done_stages: list[str | int] = []
@@ -202,7 +206,6 @@ class QuestState:
 			self.done = True
 			return rewards[1]
 
-
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
 		count = len([goal for goal in self.goals if goal.completed])
@@ -223,8 +226,11 @@ class QuestManager:
 		get_quest(identifier): Возвращает квест по идентификатору.
 		start_quest(identifier): Начинает квест по идентификатору.
 		complete_goal(num): Выполняет задание из активного квеста по номеру.
+		quest_been_launched(): Квест был запущен.
+		clear_active_quest(): Удаляет квесты из активных.
 		is_done(): Проверяет выполнено ли задание.
 	"""
+
 	def __init__(self):
 		self.quests: list[Quest] = []
 		self.active_quests: list[QuestState] = []
@@ -303,9 +309,11 @@ class QuestManager:
 		raise ValueError(f"Quest {identifier} not found")
 
 	def quest_been_launched(self, identifier: str) -> bool:
+		""" Квест был запущен. """
 		return bool(self.active_quests)
 
 	def clear_active_quest(self):
+		""" Удаляет квесты из активных. """
 		self.active_quests = []
 
 	def __repr__(self):

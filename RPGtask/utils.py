@@ -21,7 +21,6 @@ def get_item(identifier: str | Item) -> Item:
 	Аргументы:
 		identifier (Union[str, Item]): идентификатор предмета.
 	"""
-
 	if isinstance(identifier, Item):
 		return identifier
 
@@ -44,7 +43,6 @@ def calculate_item_bonus(inventory: Inventory, skill: SkillType, percent: bool =
 		skill (SkillType): тип навыка, бонус к которому мы считаем.
 		percent (bool): Если True, то возвращаем результат в виде процента, иначе в десятичном виде.
 	"""
-
 	result: int = int(not percent)
 
 	for _, slot in inventory.get(ItemType.ITEM, True):

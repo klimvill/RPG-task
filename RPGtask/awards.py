@@ -1,19 +1,49 @@
+from __future__ import annotations
+
 from random import Random
+from typing import TYPE_CHECKING
 
 from .content import all_items
-from .data.config import MULTIPLIER_OBTAINING_GOLD, DAILY_TASK_EXPERIENCE_MULTIPLIER, CONSTANT_SKILL, MULTIPLIER_SKILL, \
-	CONSTANT_GOLD, MULTIPLIER_GOLD, DIVISOR_SUM_LEVELS
+from .data.config import *
 from .inventory import Item
-from .player import Skill
 from .utils import calculate_item_bonus
+
+if TYPE_CHECKING:
+	from .interface import Interface
 
 
 class AwardsManager:
-	def __init__(self, interface):
+	"""
+	Менеджер наград и наказаний.
+
+	Параметры:
+		interface (Interface): Экземпляр главного класса.
+
+	Аргументы:
+		rnd (Random): Объект класса Random.
+
+	Методы:
+		get_rewards_user_tasks(nums): Получение наград и наказаний для пользовательских заданий.
+		get_rewards_daily_tasks(need_items): Получение наград и наказаний за ежедневные задания.
+		get_price_skill(lvl): Получение цены.
+		uniform(): Генерирует рандомное число в промежутке.
+	"""
+
+	def __init__(self, interface: Interface):
 		self.interface = interface
 		self.rnd = Random()
 
-	def get_rewards_user_tasks(self, nums: list[int]) -> tuple[int, dict, list | list[Item]]:
+	def get_rewards_user_tasks(self, nums: list | set, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
+		"""
+		Получение наград и наказаний для пользовательских заданий.
+
+		Аргументы:
+			nums (list[int]): Номера заданий, за которые надо выдать награду.
+			need_items (bool): Нужно ли выдавать предметы. Параметр необходим для наказаний. По умолчанию True.
+
+		Возвращается:
+			tuple: Кортеж, содержащий золото, опыт за навыки и предметы.
+		"""
 		gold, skills_exp, items = 0, {}, []
 		sum_all_skills = self.interface.player.sum_level()
 		if sum_all_skills < DIVISOR_SUM_LEVELS:
@@ -23,8 +53,7 @@ class AwardsManager:
 			skills = self.interface.task_manager.get_task(num).skills
 
 			if skills is None:
-				gold += self.uniform() * MULTIPLIER_OBTAINING_GOLD * (sum_all_skills / DIVISOR_SUM_LEVELS)
-
+				gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS) * MULTIPLIER_OBTAINING_GOLD
 			else:
 				gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS)
 
@@ -42,7 +71,7 @@ class AwardsManager:
 					else:
 						skills_exp[skill] = exp
 
-			if self.rnd.choices([False, True], weights=[0.98, 0.02])[0]:
+			if self.rnd.choices([False, True], weights=[0.98, 0.02])[0] and need_items:
 				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=[0.7, 0.25, 0.05])[0]
 				identifier = self.rnd.choice(list(all_items[item_lvl].keys()))
 				item = all_items[item_lvl][identifier]
@@ -52,10 +81,18 @@ class AwardsManager:
 		return gold, skills_exp, items
 
 	def get_rewards_daily_tasks(self, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
+		"""
+		Получение наград и наказаний за ежедневные задания.
+
+		Аргументы:
+			need_items (bool): Нужно ли выдавать предметы. Параметр необходим для наказаний. По умолчанию True.
+
+		Возвращается:
+			tuple: Кортеж, содержащий золото, опыт за навыки и предметы.
+		"""
 		gold, skills_exp, items = 0, {}, []
 		sum_all_skills = self.interface.player.sum_level()
-		if sum_all_skills < DIVISOR_SUM_LEVELS:
-			sum_all_skills = DIVISOR_SUM_LEVELS
+		sum_all_skills = DIVISOR_SUM_LEVELS if sum_all_skills < DIVISOR_SUM_LEVELS else sum_all_skills
 
 		for num in range(len(self.interface.daily_tasks_manager.daily_tasks)):
 			gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS)
@@ -85,39 +122,17 @@ class AwardsManager:
 
 		return gold, skills_exp, items
 
-	def punishment_delete_tasks(self, nums: set[int]) -> tuple[int, dict[Skill, float]]:
-		gold, skills_exp = 0, {}
-		sum_all_skills = self.interface.player.sum_level()
-		if sum_all_skills < DIVISOR_SUM_LEVELS:
-			sum_all_skills = DIVISOR_SUM_LEVELS
-
-		for num in nums:
-			skills = self.interface.task_manager.get_task(num).skills
-
-			if skills is None:
-				gold += self.uniform() * MULTIPLIER_OBTAINING_GOLD * (sum_all_skills / DIVISOR_SUM_LEVELS)
-
-			else:
-				gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS)
-
-				for skill in skills:
-					skill = self.interface.player.skills[skill]
-					item_bonus = calculate_item_bonus(self.interface.inventory, skill)
-
-					if skill.level > 0:
-						exp = self.uniform() * skill.level * item_bonus
-					else:
-						exp = self.uniform() * item_bonus
-
-					if skill in skills_exp:
-						skills_exp[skill] += exp
-					else:
-						skills_exp[skill] = exp
-
-		return gold, skills_exp
-
 	@staticmethod
 	def get_price_skill(lvl: int) -> tuple[float, float]:
+		"""
+		Получение цены навыка по его уровню.
+
+		Аргументы:
+			lvl (int): Уровень навыка.
+
+		Возвращается:
+			tuple: Количество опыта, цена.
+		"""
 		if lvl == 0:
 			demand_exp, demand_gold = 0.25, 0.1
 		elif lvl == 1:

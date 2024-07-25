@@ -7,6 +7,7 @@ quest.set_type(ItemType.ITEM)
 quest.set_effect('quest', 'forgotten_city')
 quest.set_cost(200)
 
+
 #################################           Шлемы - 1 уровень           ################################################
 ragged_hood = Item('ragged_hood', 'Рванный капюшон', 'кусок ткани, который можно носить на голове.')
 ragged_hood.set_type(ItemType.HELMET)
@@ -36,7 +37,7 @@ steel_helmet.set_effect(SkillType.POWER, 1.06)
 steel_helmet.set_effect(SkillType.ENDURANCE, 1.06)
 steel_helmet.set_cost(20, 10)
 
-brodie_helmet = Item('brodie_helmet', 'Шлем Броди', 'он защищал владельца от падающих болтов.')
+brodie_helmet = Item('brodie_helmet', 'Шлем Броди', 'защищал владельца от падающих болтов.')
 brodie_helmet.set_type(ItemType.HELMET)
 brodie_helmet.set_effect(SkillType.SCIENCE, 1.1)
 brodie_helmet.set_effect(SkillType.LANGUAGES, 1.1)
@@ -48,7 +49,7 @@ pink_ribbon.set_type(ItemType.HELMET)
 pink_ribbon.set_effect(SkillType.CRAFT, 1.1)
 pink_ribbon.set_effect(SkillType.ART, 1.1)
 pink_ribbon.set_effect(SkillType.FINANCE, 1.05)
-pink_ribbon.set_cost(50, 25)
+pink_ribbon.set_cost(60, 30)
 
 #################################           Шлемы - 3 уровень           ################################################
 straw_hat = Item('straw_hat', 'Соломенная шляпа', 'шляпа настоящего искателя приключений.')
@@ -67,6 +68,19 @@ stahlhelm.set_cost(500, 250)
 
 #################################           Оружие - 1 уровень           ###############################################
 #################################           Оружие - 2 уровень           ###############################################
+shorty = Item('shorty', 'Коротыш', 'мощный одноручный дробовик.')
+shorty.set_type(ItemType.WEAPON)
+shorty.set_effect(SkillType.ENDURANCE, 1.1)
+shorty.set_effect(SkillType.POWER, 1.1)
+shorty.set_cost(50, 25)
+
+beretta_70 = Item('beretta_70', 'Беретта 70', 'использовать только в крайнем случае!')
+beretta_70.set_type(ItemType.WEAPON)
+beretta_70.set_effect(SkillType.SCIENCE, 1.2)
+beretta_70.set_effect(SkillType.CRAFT, 1.15)
+beretta_70.set_effect(SkillType.ART, 1.15)
+beretta_70.set_cost(60, 30)
+
 #################################           Оружие - 3 уровень           ###############################################
 arisaka_type_38 = Item('arisaka_type_38', 'Арисака типа 38', 'абсолютно безнадёжная винтовка.')
 arisaka_type_38.set_type(ItemType.WEAPON)
@@ -114,31 +128,27 @@ amulet_phosphophyllite.set_cost(500, 250)
 
 all_items = {
 	'one': {
-		'ragged_hood': ragged_hood,
-		'old_helmet': old_helmet,
-		'wooden_circlet': wooden_circlet,
-		'tin_helmet': tin_helmet,
+		'ragged_hood': ragged_hood, 'old_helmet': old_helmet, 'wooden_circlet': wooden_circlet, 'tin_helmet': tin_helmet,
 
 		'silver_ring': silver_ring,
-
-		'quest': quest
 	},
 	'two': {
-		'steel_helmet': steel_helmet,
-		'brodie_helmet': brodie_helmet,
-		'pink_ribbon': pink_ribbon,
+		'steel_helmet': steel_helmet, 'brodie_helmet': brodie_helmet, 'pink_ribbon': pink_ribbon,
+
+		'shorty': shorty, 'beretta_70': beretta_70,
 
 		'ring_euclase': ring_euclase,
 	},
 	'three': {
-		'straw_hat': straw_hat,
-		'stahlhelm': stahlhelm,
+		'straw_hat': straw_hat, 'stahlhelm': stahlhelm,
 
 		'arisaka_type_38': arisaka_type_38,
 
 		'phantom_ring': phantom_ring,
 
 		'amulet_phosphophyllite': amulet_phosphophyllite,
+
+		'quest': quest
 	}
 }
 
