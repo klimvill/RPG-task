@@ -12,5 +12,4 @@ DAILY_TASK_EXPERIENCE_MULTIPLIER = 1.2
 
 DIVISOR_SUM_LEVELS = 3
 
-
 NUMBER_DAILY_TASKS = 3  # Количество ежедневных заданий

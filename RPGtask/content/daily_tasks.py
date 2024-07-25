@@ -1,5 +1,5 @@
-from ..player import SkillType
-from ..daily_tasks import DailyTask
+from RPGtask.player import SkillType
+from RPGtask.daily_tasks import DailyTask
 
 
 reader_1 = DailyTask('reader_1', 'Прочитать 10 страниц', [SkillType.INTELLECT, SkillType.SCIENCE])

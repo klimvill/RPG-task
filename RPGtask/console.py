@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 import os
 from itertools import groupby
-from typing import Any, NoReturn, Literal, Optional
+from typing import Any, NoReturn, Literal, Optional, TYPE_CHECKING
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -14,6 +16,9 @@ from .inventory import Slot, Item, ItemType
 from .player import SkillType, Skill
 from .utils import get_item
 
+if TYPE_CHECKING:
+	from .interface import Interface
+
 
 class AppConsole:
 	"""
@@ -24,6 +29,7 @@ class AppConsole:
 
 	Аргументы:
 		console (Console): Объект консоли.
+		log (Logger): Объект логгера. Печатает ошибки.
 
 	Методы:
 		menu(prompt, variants, title, clear): Печатает меню и текст, который предлагает пользователю сделать выбор.
@@ -35,7 +41,7 @@ class AppConsole:
 		clear_console(): Очищает консоль.
 	"""
 
-	def __init__(self, interface):
+	def __init__(self, interface: Interface):
 		self.interface = interface
 		self.console = Console()
 
@@ -116,15 +122,18 @@ class AppConsole:
 
 		self.console.print(tree)
 
-	def print_task_tree(self, view_tree: bool = True) -> NoReturn:
+	def print_task_tree(self, hide_root: bool = True) -> NoReturn:
 		"""
-		view_tree - Показывать ли в виде дерева или нет
+		Печатает дерево для просмотра всех заданий.
+
+		Аргументы:
+			hide_root (bool): Скрыть корень дерева. По умолчанию True.
 		"""
 		user_tasks = self.interface.task_manager.tasks
 		daily_tasks_manager = self.interface.daily_tasks_manager
 		quests = self.interface.quest_manager.active_quests
 
-		tree = Tree('Задания', hide_root=view_tree)
+		tree = Tree('Задания', hide_root=hide_root)
 
 		# Пользовательские задания #
 		count_user_tasks = len(user_tasks)
@@ -196,6 +205,12 @@ class AppConsole:
 		self.console.print(tree)
 
 	def print_user_tasks(self, count: int = 1) -> int:
+		"""
+		Печатает пользовательские задания.
+
+		Аргументы:
+			count (int): Число, с которого номера заданий будут брать отсчёт. По умолчанию 1.
+		"""
 		user_tasks = self.interface.task_manager.tasks
 
 		self.console.print('[green]Пользовательские задания')
@@ -217,6 +232,12 @@ class AppConsole:
 		return count
 
 	def print_daily_tasks(self, count: int) -> int:
+		"""
+		Печатает ежедневные задания.
+
+		Аргументы:
+			count (int): Число, с которого номера заданий будут брать отсчёт. По умолчанию 1.
+		"""
 		daily_tasks = self.interface.daily_tasks_manager.active_daily_tasks
 
 		self.console.print('[yellow]Ежедневные задания')
@@ -240,6 +261,12 @@ class AppConsole:
 		return count
 
 	def print_quests(self, count: int) -> int:
+		"""
+		Печатает квесты.
+
+		Аргументы:
+			count (int): Число, с которого номера заданий будут брать отсчёт. По умолчанию 1.
+		"""
 		active_quests = self.interface.quest_manager.active_quests
 
 		self.console.print('[red]Квесты')
@@ -274,12 +301,20 @@ class AppConsole:
 		return count
 
 	def print_all_task(self) -> tuple[int, int, int]:
+		""" Печатает все задания. """
 		user_tasks_count = self.print_user_tasks()
 		daily_tasks_count = self.print_daily_tasks(user_tasks_count)
 		quests_count = self.print_quests(daily_tasks_count)
+
 		return user_tasks_count, daily_tasks_count, quests_count
 
 	def print_item_tree(self, items: list[Item]) -> NoReturn:
+		"""
+		Печатает красивое представление найденных предметов.
+
+		Аргументы:
+			items (list[Item]): Предметы, которые надо напечатать.
+		"""
 		tree = Tree('\n[bold cyan]Вы нашли предметы:')
 
 		for item in items:
@@ -287,8 +322,14 @@ class AppConsole:
 
 		self.console.print(tree)
 
-	def print_tree_shop_quest(self, view_tree: bool = False):
-		tree = Tree('[magenta]Доска квестов', hide_root=view_tree)
+	def print_shop_quest(self, hide_root: bool = False):
+		"""
+		Выводит магазин квестов.
+
+		Аргументы:
+			hide_root (bool): Скрыть корень дерева. По умолчанию False.
+		"""
+		tree = Tree('[magenta]Доска квестов', hide_root=hide_root)
 
 		for num, quest_item in enumerate(all_quest_items, 1):
 			tree.add(f'[white]({num}) {quest_item.name} [yellow]Цена: {quest_item.cost}')
@@ -296,7 +337,13 @@ class AppConsole:
 		self.console.print(tree)
 
 	def print_table_price(self, gold: float, skills: list[Skill]):
-		count = 1
+		"""
+		Печатает таблицу цен.
+
+		Аргументы:
+			gold (float): Текущее количество денег у пользователя.
+			skills (list[Skill]): Список навыков, которые надо напечатать.
+		"""
 		table = Table()
 
 		table.add_column('№')
@@ -305,7 +352,7 @@ class AppConsole:
 		table.add_column('Мин. опыт', style='red')
 		table.add_column('Стоимость', style='yellow')
 
-		for skill in skills:
+		for count, skill in enumerate(skills, 1):
 			level, exp = skill.level, skill.exp
 
 			demand_exp, demand_gold = self.interface.awards_manager.get_price_skill(level)

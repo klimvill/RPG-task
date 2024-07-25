@@ -22,7 +22,13 @@ class Interface:
 
 	Аргументы:
 		console (AppConsole): Отвечает за весь вывод на экран.
+		awards_manager (AwardsManager): Отвечает за выдачу наград и наказаний.
+
+		player (Player): В этом классе хранится вся информация о деньгах и навыках.
 		inventory (Inventory): Через этот класс будет происходить вся работа с инвентарём.
+
+		task_manager (TaskManager): Отвечает за работу с пользовательскими заданиями.
+		daily_tasks_manager (DailyTaskManager): Отвечает за работу с ежедневными заданиями.
 		quest_manager (QuestManager): Отвечает за работу с квестами.
 
 	Методы:
@@ -215,7 +221,8 @@ class Interface:
 			self.console.print('\n[dim]Вы выполнили квест, вот ваша награда:')
 
 			reward = active_quests[0].process_rewards()
-			gold_quests, items_quests = reward['gold'], list(map(lambda identifier: get_item(identifier), reward['items']))
+			gold_quests, items_quests = reward['gold'], list(
+				map(lambda identifier: get_item(identifier), reward['items']))
 
 			gold += gold_quests
 
@@ -271,7 +278,8 @@ class Interface:
 		for num in nums:
 			self.console.print(f'- [red]{self.task_manager.get_task(num).text}')
 
-		gold, skills_exp = self.awards_manager.punishment_delete_tasks(nums)
+		gold, skills_exp, items = self.awards_manager.get_rewards_user_tasks(nums, False)
+
 		self.console.print(f'\n[yellow]Золото: [red]-{round(gold, 2)}')
 
 		if skills_exp:
@@ -291,7 +299,7 @@ class Interface:
 		""" Магазин квестов. """
 		self.console.title('Лавка предметов, чтобы выйти нажмите enter')
 
-		self.console.print_tree_shop_quest()
+		self.console.print_shop_quest()
 
 		command = self.console.input('\n\nКакие квесты вы хотите купить: ')
 
@@ -472,7 +480,7 @@ class Interface:
 			{
 				'user_tasks': self.task_manager.save(),
 				'daily_tasks': self.daily_tasks_manager.save(),
-			 	'quests': self.quest_manager.save()
+				'quests': self.quest_manager.save()
 			},
 			self.player.save(),
 			self.inventory.save()
