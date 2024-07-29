@@ -396,9 +396,9 @@ class AppConsole:
 					effects_str += f'    Запускает квест: [green]{quest.text.lower()}[/]\n'
 
 				elif value > 1:
-					effects_str += f"    {SkillType.description(key)}: [green]+{int(value * 100 - 100)}%[/]\n"
+					effects_str += f"    {SkillType.description(key)}: [green]+{round(value * 100 - 100)}%[/]\n"
 				else:
-					effects_str += f"    {SkillType.description(key)}: [red]{int(value * 100 - 100)}%[/]\n"
+					effects_str += f"    {SkillType.description(key)}: [red]{round(value * 100 - 100)}%[/]\n"
 			return effects_str
 
 		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"

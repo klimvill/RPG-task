@@ -1,13 +1,12 @@
-import random
 import re
 import sys
 from datetime import date
+from optparse import OptionParser
 
 from .awards import AwardsManager
 from .console import AppConsole
-from .content import all_daily_tasks, all_quest, all_quest_items
+from .content import all_quest, all_quest_items
 from .daily_tasks import DailyTaskManager
-from .data.config import NUMBER_DAILY_TASKS
 from .database import all_save, read_tasks, read_player_info, read_inventory
 from .inventory import Inventory, ItemType
 from .player import Player, SKILL_DESCRIPTIONS
@@ -83,7 +82,7 @@ class Interface:
 			'Посмотреть задания',
 			'Добавить задания',
 			'Выполнить задания',
-			'Удалить задание',
+			'Удалить задания',
 			'Лавка квестов',
 			'Лавка навыков',
 			'Инвентарь',
@@ -126,8 +125,7 @@ class Interface:
 
 		while (line := self.console.input('[bold cyan]Введите задание: [/bold cyan]')) != '':
 			# Разделение задания на компоненты #
-			task = re.sub(r'\[.*?]', '', line)
-			task = re.sub(r'\(.*?\)', '', task).rstrip()
+			task = re.sub(r'\[.*?]', '', line).rstrip()
 			skills = re.findall(r'\[([^]]*)]', line)
 
 			# Определение навыков #
@@ -138,7 +136,16 @@ class Interface:
 				skills_result = list(skills_result)[:3]
 
 			# Добавление задачи в список #
-			self.task_manager.add_task(task, skills_result)
+			parser = OptionParser()
+			parser.add_option('-e', '--every_day', dest='every_day', action='store_true',
+							  help='Делает задачу ежедневной.')
+
+			options, args = parser.parse_args(task.split())
+
+			if options.every_day:
+				self.daily_tasks_manager.add_task(' '.join(args), skills_result)
+			else:
+				self.task_manager.add_task(task, skills_result)
 
 	def mark_completion_tasks(self):
 		""" Функция отметки выполнения задач. """
@@ -156,7 +163,7 @@ class Interface:
 		nums_user_tasks, nums_daily_tasks, nums_quests = [], [], []
 		for num in nums:
 			if num < user_tasks_count:
-				task = self.task_manager.get_task(num - 1)
+				task = self.task_manager.get_task(num)
 				nums_user_tasks.append(num)
 
 			elif num < daily_tasks_count:
@@ -190,27 +197,28 @@ class Interface:
 
 		# Ежедневные задания #
 		for num in sorted(nums_daily_tasks, reverse=True):
-			done = self.daily_tasks_manager.complete(num)
+			self.daily_tasks_manager.complete(num)
 
-			if done:
-				self.console.print('\n[dim]Вы выполнили все ежедневные задания, вот ваша награда:')
+		if len(nums_daily_tasks) > 0:
+			self.console.print('\n[dim]Награда за выполнение ежедневных заданий')
 
-				gold_daily_tasks, skills_exp_daily_tasks, items_daily_tasks = self.awards_manager.get_rewards_daily_tasks()
+			gold_d, skills_exp_d, items_d = self.awards_manager.get_rewards_daily_tasks(nums_daily_tasks)
 
-				gold += gold_daily_tasks
+			self.console.print(f'[yellow]Золото: [green]+{round(gold_d, 2)}')
 
-				self.console.print(f'[yellow]Золото: [green]+{round(gold_daily_tasks, 2)}')
-				self.console.print_tree_skills('[magenta]Навыки:', skills_exp_daily_tasks)
+			if skills_exp:
+				self.console.print_tree_skills('[magenta]Навыки:', skills_exp_d)
 
-				if items_daily_tasks:
-					self.console.print_item_tree(items_daily_tasks)
-					items.extend(items_daily_tasks)
+			gold += gold_d
+			if items_d:
+				self.console.print_item_tree(items_d)
+				items.extend(items_d)
 
-				for skill, exp in skills_exp_daily_tasks.items():
-					if skill in skills_exp:
-						skills_exp[skill] += exp
-					else:
-						skills_exp[skill] = exp
+			for skill, exp in skills_exp_d.items():
+				if skill in skills_exp:
+					skills_exp[skill] += exp
+				else:
+					skills_exp[skill] = exp
 
 		# Квест #
 		for num in sorted(nums_quests, reverse=True):
@@ -257,28 +265,46 @@ class Interface:
 
 	def delete_tasks(self):
 		""" Функция удаления заданий. """
-		user_tasks = self.task_manager.tasks
-
 		self.console.title('Удаление заданий, чтобы выйти нажмите enter')
-		# Поскольку мы не можем удалить ежедневные задания или квесты, то печатать их необязательно.
-		self.console.print_user_tasks()
+
+		# Поскольку мы не можем удалить квесты, то печатать их необязательно.
+		user_task_count = self.console.print_user_tasks()
+		daily_task_count = self.console.print_daily_tasks(user_task_count)
+
 		command = self.console.input('\nКакие задания вы хотите удалить: ')
 
 		if command == '': return
-		nums = set([int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= len(user_tasks)])
+		nums = set([int(i) for i in re.findall(r'\d+', command) if 0 < int(i) < daily_task_count])
 		if not nums: return
 
 		if self.console.input(
-				'[red]Если вы удалите задачи, то потеряете накопленный опыт. Вы уверенны? [Y/n]: ') != 'Y':
+				'[red]Если вы удалите задачи, то потеряете золото и накопленный опыт. Вы уверенны? [Y/n]: ') != 'Y':
 			return
 
 		# Вывод удалённых задач #
 		self.console.title('Удалённые задачи, чтобы выйти нажмите enter')
 
-		for num in nums:
-			self.console.print(f'- [red]{self.task_manager.get_task(num).text}')
+		nums_user_tasks = []
+		nums_daily_tasks = []
 
-		gold, skills_exp, items = self.awards_manager.get_rewards_user_tasks(nums, False)
+		for num in nums:
+			if num < user_task_count:
+				self.console.print(f'- [red]{self.task_manager.get_task(num).text}')
+				nums_user_tasks.append(num)
+			else:
+				num = num - user_task_count
+				self.console.print(f'- [red]{self.daily_tasks_manager.get_daily_tasks(num).text}')
+				nums_daily_tasks.append(num)
+
+		gold, skills_exp, items = self.awards_manager.get_rewards_user_tasks(nums_user_tasks, False)
+		gold_d, skills_exp_d, items_d = self.awards_manager.get_rewards_daily_tasks(nums_daily_tasks, False)
+
+		gold += gold_d
+		for skill, exp in skills_exp_d.items():
+			if skill in skills_exp:
+				skills_exp[skill] += exp
+			else:
+				skills_exp[skill] = exp
 
 		self.console.print(f'\n[yellow]Золото: [red]-{round(gold, 2)}')
 
@@ -290,8 +316,10 @@ class Interface:
 			skill.reduce_exp(exp)
 
 		# Удаление задач #
-		for num in sorted(nums, reverse=True):
+		for num in sorted(nums_user_tasks, reverse=True):
 			self.task_manager.delete_task(num)
+		for num in sorted(nums_daily_tasks, reverse=True):
+			self.daily_tasks_manager.delete_task(num)
 
 		input()
 
@@ -430,7 +458,7 @@ class Interface:
 				else:
 					self.console.print("[red]Вы не можете это продать")
 
-			elif command == "e":
+			else:
 				continue
 
 			input()
@@ -449,21 +477,20 @@ class Interface:
 		self.player.load(player_info)
 		self.inventory.load(inventory)
 
-		self.daily_tasks_manager.daily_tasks.update(all_daily_tasks)
 		self.daily_tasks_manager.load(tasks['daily_tasks'])
 
 		# Проверяем, что ежедневное задание актуально.
 		today = str(date.today())
 		if self.daily_tasks_manager.date != today:
-			complete = self.daily_tasks_manager.update(
-				random.sample(list(all_daily_tasks.values()), NUMBER_DAILY_TASKS), today)
+			not_complete_tasks = self.daily_tasks_manager.update(today)
 
 			# Если предыдущие задания не были выполнены, то наказываем игрока за это.
-			if not complete:
+			if not_complete_tasks:
 				self.console.title('Наказание за невыполнение заданий, чтобы выйти нажмите enter')
 				self.console.print('[dim]Вы не закончили предыдущее ежедневное задание:')
 
-				gold, skills_exp, items = self.awards_manager.get_rewards_daily_tasks(need_items=False)
+				gold, skills_exp, items = self.awards_manager.get_rewards_daily_tasks(not_complete_tasks,
+																					  need_items=False)
 
 				self.console.print(f'[yellow]Золото: [red]-{round(gold, 2)}')
 				self.console.print_tree_skills('[magenta]Навыки:', skills_exp, minus=True)

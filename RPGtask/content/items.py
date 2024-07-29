@@ -74,7 +74,7 @@ shorty.set_effect(SkillType.ENDURANCE, 1.1)
 shorty.set_effect(SkillType.POWER, 1.1)
 shorty.set_cost(50, 25)
 
-beretta_70 = Item('beretta_70', 'Беретта 70', 'использовать только в крайнем случае!')
+beretta_70 = Item('beretta_70', 'Беретта 70', 'итальянский самозарядный пистолет.')
 beretta_70.set_type(ItemType.WEAPON)
 beretta_70.set_effect(SkillType.SCIENCE, 1.2)
 beretta_70.set_effect(SkillType.CRAFT, 1.15)
