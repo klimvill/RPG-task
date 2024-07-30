@@ -66,6 +66,27 @@ stahlhelm.set_effect(SkillType.ENDURANCE, 1.2)
 stahlhelm.set_effect(SkillType.POWER, 1.2)
 stahlhelm.set_cost(500, 250)
 
+################################           Нагрудник - 1 уровень           #############################################
+battered_quilted_armor = Item('battered_quilted_armor', 'Потрёпанная стёганка', 'вероятно, снята с погибшего бандита.')
+battered_quilted_armor.set_type(ItemType.BREASTPLATE)
+# todo: Добавить эффекты
+battered_quilted_armor.set_cost(3, 1.5)
+
+
+chain_mail = Item('chain_mail', 'Кольчуга', 'металлические кольца поверх стёганой ткани неплохо защищают от острых лезвий.')
+chain_mail.set_type(ItemType.BREASTPLATE)
+# todo: Добавить эффекты
+chain_mail.set_cost(10, 5)
+
+
+################################           Нагрудник - 2 уровень           #############################################
+quilted_armor = Item('quilted_armor', 'Стёганка', 'несколько слоёв ткани, крепко соединённых между собой.')
+quilted_armor.set_type(ItemType.BREASTPLATE)
+# todo: Добавить эффекты
+quilted_armor.set_cost(30, 15)
+
+
+
 #################################           Оружие - 1 уровень           ###############################################
 #################################           Оружие - 2 уровень           ###############################################
 shorty = Item('shorty', 'Коротыш', 'мощный одноручный дробовик.')
@@ -129,6 +150,8 @@ amulet_phosphophyllite.set_cost(500, 250)
 all_items = {
 	'one': {
 		'ragged_hood': ragged_hood, 'old_helmet': old_helmet, 'wooden_circlet': wooden_circlet, 'tin_helmet': tin_helmet,
+
+		'chain_mail': chain_mail, 'battered_quilted_armor': battered_quilted_armor,
 
 		'silver_ring': silver_ring,
 	},

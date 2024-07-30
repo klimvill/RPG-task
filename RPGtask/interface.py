@@ -5,11 +5,11 @@ from optparse import OptionParser
 
 from .awards import AwardsManager
 from .console import AppConsole
-from .content import all_quest, all_quest_items
+from .content import all_quest, guild_welcome_text, summary_rules
 from .daily_tasks import DailyTaskManager
 from .database import all_save, read_tasks, read_player_info, read_inventory
 from .inventory import Inventory, ItemType
-from .player import Player, SKILL_DESCRIPTIONS
+from .player import Player, SKILL_DESCRIPTIONS, RankType
 from .quests import QuestManager
 from .tasks import TaskManager
 from .utils import skill_check, get_item
@@ -83,7 +83,7 @@ class Interface:
 			'Добавить задания',
 			'Выполнить задания',
 			'Удалить задания',
-			'Лавка квестов',
+			'Гильдия авантюристов',
 			'Лавка навыков',
 			'Инвентарь',
 			'Выход',
@@ -99,7 +99,7 @@ class Interface:
 		elif command == '4':
 			self.delete_tasks()
 		elif command == '5':
-			self.quest_shop()
+			self.guild()
 		elif command == '6':
 			self.skill_shop()
 		elif command == '7':
@@ -323,36 +323,53 @@ class Interface:
 
 		input()
 
-	def quest_shop(self):
-		""" Магазин квестов. """
-		self.console.title('Лавка предметов, чтобы выйти нажмите enter')
+	def guild(self):
+		if all(skill.level < 2 for skill in self.player.skills):
+			self.console.title('Гильдия, чтобы выйти нажмите enter')
+			self.console.print(
+				'\n[red]Вы недостаточно сильны. Прокачайте навыки до второго уровня, чтобы вступить в гильдию.')
+			self.console.input()
 
-		self.console.print_shop_quest()
+		else:
+			if not self.player.name:  # Имя зарегистрированного пользователя не может быть пустой строкой.
+				self.console.title('Гильдия, чтобы выйти нажмите enter')
+				self.console.print(guild_welcome_text)
 
-		command = self.console.input('\n\nКакие квесты вы хотите купить: ')
+				while True:
+					if name := self.console.input('\n[cyan]Введите имя: '):
+						self.player.set_name(name)
+						break
+					self.console.print('[dim magenta]Работник[/]: Имя не может быть пустым.')
 
-		if command == '': return
-		nums = [int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= len(all_quest_items)]
-		if not nums: return
+				self.console.print(summary_rules)
+				self.console.input()
 
-		self.console.print()
-		for num in nums:
-			quest_item = all_quest_items[num - 1]
+			while True:
+				self.console.title('Гильдия, чтобы выйти нажмите enter')
 
-			if self.player.gold.gold >= quest_item.cost:
-				amount = self.inventory.take(quest_item, 1)
+				name = self.player.name
+				rank = RankType.description(self.player.rang)
+				experience = self.player.experience
+				max_experience = 10
 
-				if amount > 0:
-					self.console.print(
-						f'[red]В вашем инвентаре закончилось место, квест "{quest_item.name}" не был куплен!')
-				else:
-					self.player.gold.payment(quest_item.cost)
-					self.console.print(f'- [green]{quest_item.name}')
+				self.console.print(
+					'[dim]--------------------------------------------[/]\n'
+					f' [yellow]Имя:[/] {name}  [yellow]Ранг:[/] {rank}\n'
+					f' [yellow]Опыт:[/] {self.console.create_progress_bar(experience, max_experience)}\n'
+					'[dim]--------------------------------------------[/]'
+				)
 
-			else:
-				self.console.print(f'[red]Вам не хватило денег на покупку квеста "{quest_item.name}"!')
+				self.console.print(
+					'\n[bold green]Гильдия искателей приключений[/]\n'
+					'  [green]t[white] - взять квест[/]\n'
+					'  [green]c[white] - сдать квест[/]\n'
+					'  [green]s[white] - магазин[/]\n'
+					'  [green]r[white] - рейтинг[/]\n'
+					'  [green]e[white] - отмена[/]\n'
+				)
+				command = self.console.input('Что вы хотите сделать: ')
 
-		self.console.input()
+				if command == '': break
 
 	def skill_shop(self):
 		""" Функция прокачки навыков. """
@@ -362,7 +379,7 @@ class Interface:
 
 			self.console.title('Лавка навыков, чтобы выйти нажмите enter')
 			self.console.print_table_price(gold, skills)
-			self.console.print(f'[yellow]Золото: {round(gold, 2)}\n')
+			self.console.print(f' [yellow]Золото: {round(gold, 2)}\n')
 
 			command = self.console.input('Какие навыки хотите прокачать: ')
 

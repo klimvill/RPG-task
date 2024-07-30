@@ -4,7 +4,7 @@ from random import Random
 from typing import TYPE_CHECKING
 
 from .content import all_items
-from .data.config import *
+from RPGtask.config import *
 from .inventory import Item
 from .utils import calculate_item_bonus
 
@@ -71,8 +71,8 @@ class AwardsManager:
 					else:
 						skills_exp[skill] = exp
 
-			if self.rnd.choices([False, True], weights=[0.98, 0.02])[0] and need_items:
-				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=[0.7, 0.25, 0.05])[0]
+			if self.rnd.choices([False, True], weights=PROBABILITY_ITEM_FALL_OUT)[0] and need_items:
+				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=PROBABILITY_DROP_ITEM_CERTAIN_LEVEL)[0]
 				identifier = self.rnd.choice(list(all_items[item_lvl].keys()))
 				item = all_items[item_lvl][identifier]
 
@@ -117,8 +117,8 @@ class AwardsManager:
 					else:
 						skills_exp[skill] = exp
 
-			if self.rnd.choices([False, True], weights=[0.95, 0.05])[0] and need_items:
-				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=[0.7, 0.25, 0.05])[0]
+			if self.rnd.choices([False, True], weights=PROBABILITY_ITEM_FALL_OUT_DAILY_TASK)[0] and need_items:
+				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=PROBABILITY_DROP_ITEM_CERTAIN_LEVEL)[0]
 				identifier = self.rnd.choice(list(all_items[item_lvl].keys()))
 				item = all_items[item_lvl][identifier]
 

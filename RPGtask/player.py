@@ -127,6 +127,33 @@ class Skill:
 			self.exp = 0
 
 
+class RankType(IntEnum):
+	""" Типы рангов. """
+	F = 0
+	E = 1
+	D = 2
+	C = 3
+	B = 4
+	A = 5
+	S = 6
+
+	@staticmethod
+	def description(rank):
+		""" Описание ранга. """
+		return RANK_DESCRIPTIONS[rank]
+
+
+RANK_DESCRIPTIONS = {
+	RankType.F: 'F',
+	RankType.E: 'E',
+	RankType.D: 'D',
+	RankType.C: 'C',
+	RankType.B: 'B',
+	RankType.A: 'A',
+	RankType.S: 'S',
+}
+
+
 class Player:
 	"""
 	Объект игрока. В этом классе хранится вся информация о деньгах и навыках.
@@ -142,6 +169,10 @@ class Player:
 	"""
 
 	def __init__(self):
+		self.name: str = ''
+		self.rang: RankType = RankType.F
+		self.experience: int = 0
+
 		self.gold = Gold()
 
 		self.skills: list[Skill] = [
@@ -157,7 +188,7 @@ class Player:
 
 	def save(self) -> dict[str, float | list[list[int | float]]]:
 		""" Возвращает данные для сохранения. """
-		return {'money': self.gold.save(), 'skills': [skill.save() for skill in self.skills]}
+		return {'name': self.name, 'money': self.gold.save(), 'skills': [skill.save() for skill in self.skills]}
 
 	def load(self, data: dict[str, float | list[list[int | float]]]) -> NoReturn:
 		""" Загружает данные пользователя из сохранения. """
@@ -174,3 +205,6 @@ class Player:
 			all_level += skill.level
 
 		return all_level
+
+	def set_name(self, name: str) -> NoReturn:
+		self.name = name

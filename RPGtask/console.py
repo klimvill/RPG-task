@@ -5,6 +5,7 @@ import os
 from itertools import groupby
 from typing import Any, NoReturn, Literal, Optional, TYPE_CHECKING
 
+from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
@@ -160,7 +161,7 @@ class AppConsole:
 		end = ''
 
 		if count_daily_tasks == 0:
-			tree.add('[b yellow]Ежедневные задания[/]\nКончились...\n')
+			tree.add('[b yellow]Ежедневные задания[/]\nВы не добавили задания\n')
 
 		else:
 			c = '[green]x[/]' if daily_tasks_manager.done else ' '
@@ -243,7 +244,7 @@ class AppConsole:
 		self.console.print('[yellow]Ежедневные задания')
 
 		if len(daily_tasks) == 0:
-			self.console.print('Кончились...')
+			self.console.print('Вы не добавили задания')
 
 		else:
 			for task in self.interface.daily_tasks_manager.active_daily_tasks:
@@ -344,13 +345,13 @@ class AppConsole:
 			gold (float): Текущее количество денег у пользователя.
 			skills (list[Skill]): Список навыков, которые надо напечатать.
 		"""
-		table = Table()
+		table = Table(box=box.HORIZONTALS)
 
 		table.add_column('№')
 		table.add_column('Навык', style='magenta')
 		table.add_column('Уровень', style='cyan', justify='center')
-		table.add_column('Мин. опыт', style='red')
-		table.add_column('Стоимость', style='yellow')
+		table.add_column('Мин. опыт', style='red', justify='right')
+		table.add_column('Стоимость', style='yellow', justify='center')
 
 		for count, skill in enumerate(skills, 1):
 			level, exp = skill.level, skill.exp
@@ -477,6 +478,12 @@ class AppConsole:
 					counter += 1
 				self.console.print(self.show_item(slot, show_amount), end="")
 			self.console.print()
+
+	@staticmethod
+	def create_progress_bar(value: int, maximum: int, color: str = 'green', width: int = 26, suffix: bool = True):
+		sym_len = int(value / maximum * width) if maximum else 0
+		suffix = f' {value}/{maximum}' if suffix else ''
+		return f'[[{color}]{'|' * sym_len}{' ' * (width - sym_len)}[/]]{suffix}'
 
 	def input(self, *args, **kwargs) -> Any:
 		""" Запрашивает ввод пользователя. """
