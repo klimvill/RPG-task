@@ -12,9 +12,9 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from .content import all_quest_items
 from .inventory import Slot, Item, ItemType
-from .player import SkillType, Skill
+from .player import SkillType, Skill, RankType
+from .quests import Quest
 from .utils import get_item
 
 if TYPE_CHECKING:
@@ -121,7 +121,8 @@ class AppConsole:
 		for key, value in skills.items():
 			tree.add(f'[magenta]{SkillType.description(key.skill_type)} {c}{round(value, 2)}')
 
-		self.console.print(tree)
+		if skills:
+			self.console.print(tree)
 
 	def print_task_tree(self, hide_root: bool = True) -> NoReturn:
 		"""
@@ -321,21 +322,35 @@ class AppConsole:
 		for item in items:
 			tree.add(f'{item.name}')
 
-		self.console.print(tree)
+		if items:
+			self.console.print(tree)
 
-	def print_shop_quest(self, hide_root: bool = False):
-		"""
-		Выводит магазин квестов.
+	def print_shop_quest(self, quests: list[Quest]):
+		table = Table(box=box.SIMPLE)
 
-		Аргументы:
-			hide_root (bool): Скрыть корень дерева. По умолчанию False.
-		"""
-		tree = Tree('[magenta]Доска квестов', hide_root=hide_root)
+		table.add_column('№')
+		table.add_column('Название', style='magenta')
+		table.add_column('Ранг', style='cyan', justify='center')
+		table.add_column('Описание', style='green', min_width=25)
+		table.add_column('Награда', style='yellow')
 
-		for num, quest_item in enumerate(all_quest_items, 1):
-			tree.add(f'[white]({num}) {quest_item.name} [yellow]Цена: {quest_item.cost}')
+		for count, quest in enumerate(quests, 1):
+			items = quest.reward['items']
 
-		self.console.print(tree)
+			item_str = ', ' + ', '.join(get_item(item).name for item in items) if items else ''
+			gold = f"{quest.reward['gold']}G"
+
+			reward_str = f'{gold}{item_str}'
+
+			table.add_row(
+				f'{count}',
+				quest.text,
+				RankType.description(quest.rank),
+				quest.description,
+				reward_str
+			)
+
+		self.console.print(table)
 
 	def print_table_price(self, gold: float, skills: list[Skill]):
 		"""
@@ -345,7 +360,7 @@ class AppConsole:
 			gold (float): Текущее количество денег у пользователя.
 			skills (list[Skill]): Список навыков, которые надо напечатать.
 		"""
-		table = Table(box=box.HORIZONTALS)
+		table = Table(box=box.SIMPLE)
 
 		table.add_column('№')
 		table.add_column('Навык', style='magenta')

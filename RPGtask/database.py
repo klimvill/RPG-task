@@ -2,13 +2,13 @@ import json
 from os import path
 from typing import Any
 
-from RPGtask.player import SkillType
+from .player import SkillType
 
 # Пути до файлов с данными
 base_path = path.dirname(__file__)
-task_path = path.abspath(path.join(base_path, '..', 'data/tasks.json'))
-hero_path = path.abspath(path.join(base_path, '..', 'data/player.json'))
-inventory_path = path.abspath(path.join(base_path, '..', 'data/inventory.json'))
+task_path = path.abspath(path.join(base_path, 'data/tasks.json'))
+hero_path = path.abspath(path.join(base_path, 'data/player.json'))
+inventory_path = path.abspath(path.join(base_path, 'data/inventory.json'))
 
 
 def all_save(tasks, hero_info, inventory):

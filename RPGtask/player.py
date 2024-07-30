@@ -1,6 +1,8 @@
 from enum import IntEnum
 from typing import NoReturn
 
+from .config import RANK_EXPERIENCE_MULTIPLIER
+
 
 class Gold:
 	"""
@@ -129,13 +131,13 @@ class Skill:
 
 class RankType(IntEnum):
 	""" Типы рангов. """
-	F = 0
-	E = 1
-	D = 2
-	C = 3
-	B = 4
-	A = 5
-	S = 6
+	F = 1
+	E = 2
+	D = 3
+	C = 4
+	B = 5
+	A = 6
+	S = 7
 
 	@staticmethod
 	def description(rank):
@@ -170,7 +172,7 @@ class Player:
 
 	def __init__(self):
 		self.name: str = ''
-		self.rang: RankType = RankType.F
+		self.rank: RankType = RankType.F
 		self.experience: int = 0
 
 		self.gold = Gold()
@@ -188,14 +190,31 @@ class Player:
 
 	def save(self) -> dict[str, float | list[list[int | float]]]:
 		""" Возвращает данные для сохранения. """
-		return {'name': self.name, 'money': self.gold.save(), 'skills': [skill.save() for skill in self.skills]}
+		return {'name': self.name, 'rank': self.rank, 'experience': self.experience, 'money': self.gold.save(),
+				'skills': [skill.save() for skill in self.skills]}
 
 	def load(self, data: dict[str, float | list[list[int | float]]]) -> NoReturn:
 		""" Загружает данные пользователя из сохранения. """
+		self.name = data['name']
+		self.rank = data['rank']
+		self.experience = data['experience']
 		self.gold.load(data['money'])
 
 		for count, skill_data in enumerate(data['skills']):
 			self.skills[count].load(skill_data)
+
+	def set_name(self, name: str) -> NoReturn:
+		self.name = name
+
+	def add_experience(self) -> bool:
+		self.experience += 1
+
+		if self.experience == self.rank * RANK_EXPERIENCE_MULTIPLIER:
+			self.experience = 0
+			self.rank += 1
+
+			return True
+		return False
 
 	def sum_level(self) -> int:
 		""" Считает сумму всех уровней навыков. """
@@ -205,6 +224,3 @@ class Player:
 			all_level += skill.level
 
 		return all_level
-
-	def set_name(self, name: str) -> NoReturn:
-		self.name = name

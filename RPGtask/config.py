@@ -17,3 +17,6 @@ PROBABILITY_ITEM_FALL_OUT_DAILY_TASK = [0.98, 0.02]  # Вероятность в
 
 # Вероятность выпадения предмета определённого уровня. [первый, второй, третий].
 PROBABILITY_DROP_ITEM_CERTAIN_LEVEL = [0.7, 0.25, 0.05]
+
+RANK_EXPERIENCE_MULTIPLIER = 10
+NUMBER_QUEST_STORE = 10
