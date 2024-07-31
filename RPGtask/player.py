@@ -207,12 +207,16 @@ class Player:
 		self.name = name
 
 	def add_experience(self) -> bool:
+		max_exp_rank = RankType.S * RANK_EXPERIENCE_MULTIPLIER
+
+		if self.rank == RankType.S and self.experience >= max_exp_rank - 1:
+			self.experience = max_exp_rank
+			return False
+
 		self.experience += 1
 
 		if self.experience == self.rank * RANK_EXPERIENCE_MULTIPLIER:
-			self.experience = 0
 			self.rank += 1
-
 			return True
 		return False
 

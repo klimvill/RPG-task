@@ -271,10 +271,8 @@ class AppConsole:
 		"""
 		active_quests = self.interface.quest_manager.active_quests
 
-		self.console.print('[red]Квесты')
-
 		if len(active_quests) == 0:
-			self.console.print('Возьмите квест в гильдии')
+			self.console.print('[b red]Квесты[/]\nВозьмите квест в гильдии')
 			return count
 
 		for active in active_quests:
@@ -329,7 +327,7 @@ class AppConsole:
 		table = Table(box=box.SIMPLE)
 
 		table.add_column('№')
-		table.add_column('Название', style='magenta')
+		table.add_column('Квест', style='magenta')
 		table.add_column('Ранг', style='cyan', justify='center')
 		table.add_column('Описание', style='green', min_width=25)
 		table.add_column('Награда', style='yellow')
@@ -337,17 +335,31 @@ class AppConsole:
 		for count, quest in enumerate(quests, 1):
 			items = quest.reward['items']
 
-			item_str = ', ' + ', '.join(get_item(item).name for item in items) if items else ''
-			gold = f"{quest.reward['gold']}G"
-
-			reward_str = f'{gold}{item_str}'
+			sup_str = 'предмета' if len(items) > 1 else 'предмет'
+			reward_str = f', {len(items)} {sup_str}' if items else ''
 
 			table.add_row(
-				f'{count}',
+				str(count),
 				quest.text,
 				RankType.description(quest.rank),
 				quest.description,
-				reward_str
+				f'{quest.reward['gold']}G' + reward_str
+			)
+
+		self.console.print(table)
+
+	def print_shop(self, items: list[Item]):
+		table = Table(box=box.SIMPLE)
+
+		table.add_column('№')
+		table.add_column('Предмет', style='magenta')
+		table.add_column('Цена', justify='right', style='yellow')
+
+		for count, item in enumerate(items, 1):
+			table.add_row(
+				str(count),
+				item.name,
+				str(item.cost)
 			)
 
 		self.console.print(table)
@@ -375,19 +387,19 @@ class AppConsole:
 
 			if exp >= demand_exp and gold >= demand_gold:
 				table.add_row(
-					f'{count}',
+					str(count),
 					SkillType.description(skill.skill_type),
-					f'{level}',
+					str(level),
 					f'[green]{demand_exp} ({round(exp, 2)})',
-					f'{demand_gold}'
+					str(demand_gold)
 				)
 			else:  # Поскольку пользователь не может купить улучшение оно затемнено
 				table.add_row(
-					f'{count}',
-					f'[dim]{SkillType.description(skill.skill_type)}',
-					f'[dim]{level}',
-					f'[dim]{demand_exp} ({round(exp, 2)})',
-					f'[dim]{demand_gold}'
+					str(count),
+					f'[d]{SkillType.description(skill.skill_type)}',
+					f'[d]{level}',
+					f'[d]{demand_exp} ({round(exp, 2)})',
+					f'[d]{demand_gold}'
 				)
 			count += 1
 

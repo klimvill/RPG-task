@@ -5,14 +5,14 @@ from datetime import date
 from optparse import OptionParser
 
 from .awards import AwardsManager
-from .config import NUMBER_QUEST_STORE, RANK_EXPERIENCE_MULTIPLIER
+from .config import NUMBER_QUEST_STORE, RANK_EXPERIENCE_MULTIPLIER, NUMBER_ITEM_STORE
 from .console import AppConsole
-from .content import all_quest, guild_welcome_text, summary_rules
+from .content import all_items, all_quest, guild_welcome_text_1, guild_welcome_text_2
 from .daily_tasks import DailyTaskManager
 from .database import all_save, read_tasks, read_player_info, read_inventory
 from .inventory import Inventory, ItemType
 from .player import Player, SKILL_DESCRIPTIONS, RankType
-from .quests import Quest, QuestManager
+from .quests import QuestManager
 from .tasks import TaskManager
 from .utils import skill_check, get_item
 
@@ -249,10 +249,14 @@ class Interface:
 
 		printed_flag = True
 		for item in items:
-			if self.inventory.take(item, 1) > 0:
-				if not printed_flag:
-					self.console.print(f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
-					printed_flag = False
+			amount = self.inventory.take(item, 1)
+
+			if amount and printed_flag:
+				self.console.print(f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
+				printed_flag = False
+
+			if not printed_flag:
+				self.player.gold.add_money(item.sell)
 
 		if len(nums_user_tasks + nums_daily_tasks + nums_quests) != 0:
 			input()
@@ -316,16 +320,20 @@ class Interface:
 		input()
 
 	def guild(self):
+		""" Функция гильдии. """
+		# Регистрация игрока #
 		if not self.player.name:  # Имя зарегистрированного пользователя не может быть пустой строкой.
-			self.console.print(guild_welcome_text)
+			self.console.title('Гильдия, чтобы выйти нажмите enter')
+			self.console.print(guild_welcome_text_1)
 
 			while not (name := self.console.input('[cyan]Введите имя: ')):
 				self.console.print('[d magenta]Работник[/]: Имя не может быть пустым.\n')
 			self.player.set_name(name)
 
-			self.console.print(summary_rules)
+			self.console.print(guild_welcome_text_2)
 			self.console.input()
 
+		# Основной цикл функции #
 		while True:
 			self.console.title('Гильдия, чтобы выйти нажмите enter')
 
@@ -353,21 +361,22 @@ class Interface:
 
 				# Квесты, подходящие по рангу.
 				quests = [quest for quest in all_quest if self.player.rank - 2 < quest.rank < self.player.rank + 2]
+
 				# todo: Убрать, когда квестов станет достаточно
 				number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
-				quests = random.choices(quests, k=number_quest_store)
+				quests = random.sample(quests, k=number_quest_store)
 
 				self.console.print_shop_quest(quests)
 
 				command = self.console.input('Какой квест вы хотите взять: ')
-				if command == '': return
+				if command == '': continue
 				num = [int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= number_quest_store]
-				if not num: return
+				if not num: continue
 
-				quest_item: Quest = quests[num[0] - 1]
+				quest = quests[num[0] - 1]
 
 				if not self.quest_manager.quest_been_launched():
-					self.quest_manager.start_quest(quest_item.id)
+					self.quest_manager.start_quest(quest.id)
 					self.console.print('[green]Квест успешно активирован!')
 				else:
 					self.console.print('[red]Вы не выполнили предыдущий квест!')
@@ -376,10 +385,37 @@ class Interface:
 
 			elif command == 's':
 				self.console.title('Магазин, чтобы выйти нажмите enter')
+
+				items = random.sample([item for items in all_items.values() for item in items.values()],
+									  k=NUMBER_ITEM_STORE)
+
+				self.console.print_shop(items)
+
+				command = self.console.input('Какие предметы вы хотите купить: ')
+				if command == '': continue
+				nums = [int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= NUMBER_ITEM_STORE]
+				if not nums: continue
+
+				self.console.title('Магазин, чтобы выйти нажмите enter')
+				items = [items[num - 1] for num in nums]
+
+				printed_flag = True
+				for item in items:
+					amount = self.inventory.take(item, 1)
+					if not amount:
+						self.console.print(f'- {item.name}')
+						self.player.gold.payment(item.cost)
+
+					elif printed_flag:
+						self.console.print(f'\n[red]В вашем инвентаре закончилось место.')
+						printed_flag = False
+
 				self.console.input()
+
 			elif command == 'r':
 				self.console.title('Рейтинг, чтобы выйти нажмите enter')
 				self.console.input()
+
 			elif command == '':
 				break
 

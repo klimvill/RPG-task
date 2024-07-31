@@ -174,7 +174,3 @@ all_items = {
 		'quest': quest
 	}
 }
-
-all_quest_items = [
-	quest,
-]
