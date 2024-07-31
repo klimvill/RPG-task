@@ -1,5 +1,6 @@
 from enum import IntEnum
-from typing import NoReturn
+
+from .config import RANK_EXPERIENCE_MULTIPLIER
 
 
 class Gold:
@@ -23,11 +24,11 @@ class Gold:
 		""" Сохранение информации о количестве денег. """
 		return self.gold
 
-	def load(self, num: float) -> NoReturn:
+	def load(self, num: float):
 		""" Загрузка информации о количестве денег. """
 		self.gold = num
 
-	def add_money(self, num: float) -> NoReturn:
+	def add_money(self, num: float):
 		"""
 		Добавляет деньги на баланс пользователя.
 
@@ -127,27 +128,65 @@ class Skill:
 			self.exp = 0
 
 
+class RankType(IntEnum):
+	""" Типы рангов. """
+	F = 1
+	E = 2
+	D = 3
+	C = 4
+	B = 5
+	A = 6
+	S = 7
+
+	@staticmethod
+	def description(rank):
+		""" Описание ранга. """
+		return RANK_DESCRIPTIONS[rank]
+
+
+RANK_DESCRIPTIONS = {
+	RankType.F: 'F',
+	RankType.E: 'E',
+	RankType.D: 'D',
+	RankType.C: 'C',
+	RankType.B: 'B',
+	RankType.A: 'A',
+	RankType.S: 'S',
+}
+
+
 class Player:
 	"""
 	Объект игрока. В этом классе хранится вся информация о деньгах и навыках.
 
 	Аргументы:
+		name (str): Имя персонажа. По умолчанию пустая строка.
+		rank (RankType): Ранг персонажа. По умолчанию RankType.F
+		experience (int): Опыт. По умолчанию 0.
+		shops_save (dict[str, str | list[str]]): Сохранения магазина предметов. По умолчанию пустой словарь.
+
 		gold (Gold): объект золота.
 		skills (list[Skill]): список навыков.
 
 	Методы:
 		save(): Возвращает данные для сохранения.
 		load(data): Загружает данные пользователя из сохранения.
+		add_experience(): Добавляет опыт за выполнение квеста.
 		sum_level(): Считает сумму всех уровней навыков.
 	"""
 
 	def __init__(self):
+		self.name: str = ''
+		self.rank: RankType = RankType.F
+		self.experience: int = 0
+		self.shops_save: dict[str, str | list[str]] = {}
+
 		self.gold = Gold()
 
 		self.skills: list[Skill] = [
 			Skill(SkillType.INTELLECT),
-			Skill(SkillType.LANGUAGES),
 			Skill(SkillType.SCIENCE),
+			Skill(SkillType.LANGUAGES),
 			Skill(SkillType.ART),
 			Skill(SkillType.POWER),
 			Skill(SkillType.ENDURANCE),
@@ -157,14 +196,34 @@ class Player:
 
 	def save(self) -> dict[str, float | list[list[int | float]]]:
 		""" Возвращает данные для сохранения. """
-		return {'money': self.gold.save(), 'skills': [skill.save() for skill in self.skills]}
+		return {'name': self.name, 'rank': self.rank, 'experience': self.experience, 'money': self.gold.save(),
+				'shops_save': self.shops_save, 'skills': [skill.save() for skill in self.skills]}
 
-	def load(self, data: dict[str, float | list[list[int | float]]]) -> NoReturn:
+	def load(self, data: dict[str, float | list[list[int | float]]]):
 		""" Загружает данные пользователя из сохранения. """
+		self.name = data['name']
+		self.rank = data['rank']
+		self.experience = data['experience']
+		self.shops_save = data['shops_save']
 		self.gold.load(data['money'])
 
 		for count, skill_data in enumerate(data['skills']):
 			self.skills[count].load(skill_data)
+
+	def add_experience(self) -> bool:
+		""" Добавляет опыт за выполнение квеста. """
+		max_exp_rank = RankType.S * RANK_EXPERIENCE_MULTIPLIER
+
+		if self.rank == RankType.S and self.experience >= max_exp_rank - 1:
+			self.experience = max_exp_rank
+			return False
+
+		self.experience += 1
+
+		if self.experience == self.rank * RANK_EXPERIENCE_MULTIPLIER:
+			self.rank += 1
+			return True
+		return False
 
 	def sum_level(self) -> int:
 		""" Считает сумму всех уровней навыков. """

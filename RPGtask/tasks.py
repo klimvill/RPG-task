@@ -68,7 +68,7 @@ class TaskManager:
 		Добавляет задачу.
 
 		Аргументы:
-			name (str): Имя задания.
+			text (str): Текст задания.
 			skills (Union[list[str], None]): Список навыков или None, если их нет.
 		"""
 		if not skills:

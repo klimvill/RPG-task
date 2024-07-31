@@ -3,8 +3,8 @@ from __future__ import annotations
 from random import Random
 from typing import TYPE_CHECKING
 
+from .config import *
 from .content import all_items
-from .data.config import *
 from .inventory import Item
 from .utils import calculate_item_bonus
 
@@ -71,8 +71,8 @@ class AwardsManager:
 					else:
 						skills_exp[skill] = exp
 
-			if self.rnd.choices([False, True], weights=[0.98, 0.02])[0] and need_items:
-				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=[0.7, 0.25, 0.05])[0]
+			if self.rnd.choices([False, True], weights=PROBABILITY_ITEM_FALL_OUT)[0] and need_items:
+				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=PROBABILITY_DROP_ITEM_CERTAIN_LEVEL)[0]
 				identifier = self.rnd.choice(list(all_items[item_lvl].keys()))
 				item = all_items[item_lvl][identifier]
 
@@ -80,11 +80,12 @@ class AwardsManager:
 
 		return gold, skills_exp, items
 
-	def get_rewards_daily_tasks(self, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
+	def get_rewards_daily_tasks(self, nums: list | set, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
 		"""
 		Получение наград и наказаний за ежедневные задания.
 
 		Аргументы:
+			nums (list[int]): Номера заданий, за которые надо выдать награду.
 			need_items (bool): Нужно ли выдавать предметы. Параметр необходим для наказаний. По умолчанию True.
 
 		Возвращается:
@@ -94,27 +95,30 @@ class AwardsManager:
 		sum_all_skills = self.interface.player.sum_level()
 		sum_all_skills = DIVISOR_SUM_LEVELS if sum_all_skills < DIVISOR_SUM_LEVELS else sum_all_skills
 
-		for num in range(len(self.interface.daily_tasks_manager.daily_tasks)):
-			gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS)
+		for num in nums:
+			task = self.interface.daily_tasks_manager.get_daily_tasks(num)
 
-			skills = self.interface.daily_tasks_manager.get_daily_tasks(num).skills
+			if task.skills is None:
+				gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS) * MULTIPLIER_OBTAINING_GOLD
+			else:
+				gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS)
 
-			for skill in skills:
-				skill = self.interface.player.skills[skill]
-				item_bonus = calculate_item_bonus(self.interface.inventory, skill)
+				for skill in task.skills:
+					skill = self.interface.player.skills[skill]
+					item_bonus = calculate_item_bonus(self.interface.inventory, skill)
 
-				if skill.level > 0:
-					exp = self.uniform() * skill.level * item_bonus * DAILY_TASK_EXPERIENCE_MULTIPLIER
-				else:
-					exp = self.uniform() * item_bonus * DAILY_TASK_EXPERIENCE_MULTIPLIER
+					if skill.level > 0:
+						exp = self.uniform() * skill.level * item_bonus * DAILY_TASK_EXPERIENCE_MULTIPLIER
+					else:
+						exp = self.uniform() * item_bonus * DAILY_TASK_EXPERIENCE_MULTIPLIER
 
-				if skill in skills_exp:
-					skills_exp[skill] += exp
-				else:
-					skills_exp[skill] = exp
+					if skill in skills_exp:
+						skills_exp[skill] += exp
+					else:
+						skills_exp[skill] = exp
 
-			if self.rnd.choices([False, True], weights=[0.95, 0.05])[0] and need_items:
-				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=[0.7, 0.25, 0.05])[0]
+			if self.rnd.choices([False, True], weights=PROBABILITY_ITEM_FALL_OUT_DAILY_TASK)[0] and need_items:
+				item_lvl = self.rnd.choices(['one', 'two', 'three'], weights=PROBABILITY_DROP_ITEM_CERTAIN_LEVEL)[0]
 				identifier = self.rnd.choice(list(all_items[item_lvl].keys()))
 				item = all_items[item_lvl][identifier]
 

@@ -5,15 +5,16 @@ import os
 from itertools import groupby
 from typing import Any, NoReturn, Literal, Optional, TYPE_CHECKING
 
+from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from .content import all_quest_items
 from .inventory import Slot, Item, ItemType
-from .player import SkillType, Skill
+from .player import SkillType, Skill, RankType
+from .quests import Quest
 from .utils import get_item
 
 if TYPE_CHECKING:
@@ -35,6 +36,26 @@ class AppConsole:
 		menu(prompt, variants, title, clear): Печатает меню и текст, который предлагает пользователю сделать выбор.
 		panel_print(text, title, title_align, border_style): Печатает текст в 	панели.
 		title(text, clear): Печатает заголовок, в котором обычно находится справочная информация.
+
+		print_tree_skills(title, skills): Печатает дерево наград для навыков.
+		print_task_tree(): Печатает дерево для просмотра всех заданий.
+
+		print_user_tasks(): Печатает пользовательские задания.
+		print_daily_tasks(count): Печатает ежедневные задания.
+		print_quests(count): Печатает квесты.
+		print_all_task(): Печатает все задания.
+
+		print_item_tree(items): Печатает красивое представление найденных предметов.
+
+		print_shop_quest(quests): Печатает магазин квестов.
+		print_shop(items): Печатает магазин предмет.
+		print_skill_shop(gold, skills): Печатает магазин навыков.
+
+		presence_item(item): Отображает информацию о предмете.
+		show_item(slot): Генерирует строковое представление предмета в заданном слоте.
+		show_inventory():Отображает инвентарь игрока.
+
+		create_progress_bar(value, maximum):Создаёт индикатор выполнения.
 
 		input(): Запрашивает ввод пользователя.
 		print(): Выводит заданные аргументы.
@@ -120,7 +141,8 @@ class AppConsole:
 		for key, value in skills.items():
 			tree.add(f'[magenta]{SkillType.description(key.skill_type)} {c}{round(value, 2)}')
 
-		self.console.print(tree)
+		if skills:
+			self.console.print(tree)
 
 	def print_task_tree(self, hide_root: bool = True) -> NoReturn:
 		"""
@@ -160,7 +182,7 @@ class AppConsole:
 		end = ''
 
 		if count_daily_tasks == 0:
-			tree.add('[b yellow]Ежедневные задания[/]\nКончились...\n')
+			tree.add('[b yellow]Ежедневные задания[/]\nВы не добавили задания\n')
 
 		else:
 			c = '[green]x[/]' if daily_tasks_manager.done else ' '
@@ -189,7 +211,7 @@ class AppConsole:
 
 			for sid in active.done_stages:
 				stage = active.quest.stages[sid]
-				quest_tree.add(f'[[green]x[/]] [green]{stage.name}')  # f"[white][[green]x[white]] [green]{stage.name}"
+				quest_tree.add(f'[[green]x[/]] [green]{stage.name}')
 
 			if active.done:
 				continue
@@ -243,7 +265,7 @@ class AppConsole:
 		self.console.print('[yellow]Ежедневные задания')
 
 		if len(daily_tasks) == 0:
-			self.console.print('Кончились...')
+			self.console.print('Вы не добавили задания')
 
 		else:
 			for task in self.interface.daily_tasks_manager.active_daily_tasks:
@@ -269,10 +291,8 @@ class AppConsole:
 		"""
 		active_quests = self.interface.quest_manager.active_quests
 
-		self.console.print('[red]Квесты')
-
 		if len(active_quests) == 0:
-			self.console.print('Возьмите квест в гильдии')
+			self.console.print('[b red]Квесты[/]\nВозьмите квест в гильдии')
 			return count
 
 		for active in active_quests:
@@ -320,37 +340,77 @@ class AppConsole:
 		for item in items:
 			tree.add(f'{item.name}')
 
-		self.console.print(tree)
+		if items:
+			self.console.print(tree)
 
-	def print_shop_quest(self, hide_root: bool = False):
+	def print_shop_quest(self, quests: list[Quest]):
 		"""
-		Выводит магазин квестов.
+		Печатает магазин квестов.
 
 		Аргументы:
-			hide_root (bool): Скрыть корень дерева. По умолчанию False.
+			quests (list[Quest]): Список квестов, которые будут в магазине.
 		"""
-		tree = Tree('[magenta]Доска квестов', hide_root=hide_root)
+		table = Table(box=box.SIMPLE)
 
-		for num, quest_item in enumerate(all_quest_items, 1):
-			tree.add(f'[white]({num}) {quest_item.name} [yellow]Цена: {quest_item.cost}')
+		table.add_column('№')
+		table.add_column('Квест', style='magenta')
+		table.add_column('Ранг', style='cyan', justify='center')
+		table.add_column('Описание', style='green', min_width=25)
+		table.add_column('Награда', style='yellow')
 
-		self.console.print(tree)
+		for count, quest in enumerate(quests, 1):
+			items = quest.reward['items']
 
-	def print_table_price(self, gold: float, skills: list[Skill]):
+			sup_str = 'предмета' if len(items) > 1 else 'предмет'
+			reward_str = f', {len(items)} {sup_str}' if items else ''
+
+			table.add_row(
+				str(count),
+				quest.text,
+				RankType.description(quest.rank),
+				quest.description,
+				f'{quest.reward['gold']}G' + reward_str
+			)
+
+		self.console.print(table)
+
+	def print_shop(self, items: list[Item]):
 		"""
-		Печатает таблицу цен.
+		Печатает магазин предмет.
+
+		Аргументы:
+			items (list[Item]): Список предметов, которые будут в магазине.
+		"""
+		table = Table(box=box.SIMPLE)
+
+		table.add_column('№')
+		table.add_column('Предмет', style='magenta')
+		table.add_column('Цена', justify='right', style='yellow')
+
+		for count, item in enumerate(items, 1):
+			table.add_row(
+				str(count),
+				item.name,
+				str(item.cost)
+			)
+
+		self.console.print(table)
+
+	def print_skill_shop(self, gold: float, skills: list[Skill]):
+		"""
+		Печатает магазин навыков.
 
 		Аргументы:
 			gold (float): Текущее количество денег у пользователя.
 			skills (list[Skill]): Список навыков, которые надо напечатать.
 		"""
-		table = Table()
+		table = Table(box=box.SIMPLE)
 
 		table.add_column('№')
 		table.add_column('Навык', style='magenta')
 		table.add_column('Уровень', style='cyan', justify='center')
-		table.add_column('Мин. опыт', style='red')
-		table.add_column('Стоимость', style='yellow')
+		table.add_column('Мин. опыт', style='red', justify='right')
+		table.add_column('Стоимость', style='yellow', justify='center')
 
 		for count, skill in enumerate(skills, 1):
 			level, exp = skill.level, skill.exp
@@ -359,19 +419,19 @@ class AppConsole:
 
 			if exp >= demand_exp and gold >= demand_gold:
 				table.add_row(
-					f'{count}',
+					str(count),
 					SkillType.description(skill.skill_type),
-					f'{level}',
+					str(level),
 					f'[green]{demand_exp} ({round(exp, 2)})',
-					f'{demand_gold}'
+					str(demand_gold)
 				)
 			else:  # Поскольку пользователь не может купить улучшение оно затемнено
 				table.add_row(
-					f'{count}',
-					f'[dim]{SkillType.description(skill.skill_type)}',
-					f'[dim]{level}',
-					f'[dim]{demand_exp} ({round(exp, 2)})',
-					f'[dim]{demand_gold}'
+					str(count),
+					f'[d]{SkillType.description(skill.skill_type)}',
+					f'[d]{level}',
+					f'[d]{demand_exp} ({round(exp, 2)})',
+					f'[d]{demand_gold}'
 				)
 			count += 1
 
@@ -396,9 +456,9 @@ class AppConsole:
 					effects_str += f'    Запускает квест: [green]{quest.text.lower()}[/]\n'
 
 				elif value > 1:
-					effects_str += f"    {SkillType.description(key)}: [green]+{int(value * 100 - 100)}%[/]\n"
+					effects_str += f"    {SkillType.description(key)}: [green]+{round(value * 100 - 100)}%[/]\n"
 				else:
-					effects_str += f"    {SkillType.description(key)}: [red]{int(value * 100 - 100)}%[/]\n"
+					effects_str += f"    {SkillType.description(key)}: [red]{round(value * 100 - 100)}%[/]\n"
 			return effects_str
 
 		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"
@@ -477,6 +537,22 @@ class AppConsole:
 					counter += 1
 				self.console.print(self.show_item(slot, show_amount), end="")
 			self.console.print()
+
+	@staticmethod
+	def create_progress_bar(value: int, maximum: int, color: str = 'green', width: int = 26, suffix: bool = True):
+		"""
+		Создаёт индикатор выполнения.
+
+		Аргументы:
+			value (int): Значение индикатора выполнения.
+			maximum (int): Максимальное значение индикатора выполнения.
+			color (str): Цвет индикатора. По умолчанию green.
+			width (int): Длина индикатора. По умолчанию 26.
+			suffix (bool): Добавить ли текущее значение и максимальное значение.
+		"""
+		sym_len = int(value / maximum * width) if maximum else 0
+		suffix = f' {value}/{maximum}' if suffix else ''
+		return f'[[{color}]{'|' * sym_len}{' ' * (width - sym_len)}[/]]{suffix}'
 
 	def input(self, *args, **kwargs) -> Any:
 		""" Запрашивает ввод пользователя. """

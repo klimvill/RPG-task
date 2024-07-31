@@ -1,26 +1,6 @@
-from enum import IntEnum
 from typing import Any, NoReturn
 
-
-class QuestLevel(IntEnum):
-	""" Уровень квеста. """
-	EASY = 1
-	MEDIUM = 2
-	HARD = 3
-	LEGENDARY = 4
-
-	@staticmethod
-	def description(level):
-		""" Описание типа квеста """
-		return LEVEL_DESCRIPTIONS[level]
-
-
-LEVEL_DESCRIPTIONS = {
-	QuestLevel.EASY: 'Простой',  # ★☆☆☆
-	QuestLevel.MEDIUM: 'Средний',  # ★★☆☆
-	QuestLevel.HARD: 'Сложный',  # ★★★☆
-	QuestLevel.LEGENDARY: 'Легендарный',  # ★★★★
-}
+from .player import RankType
 
 
 class Goal:
@@ -95,12 +75,13 @@ class Quest:
 		stages (dict[str | int, Stage]): Стадии квеста.
 	"""
 
-	def __init__(self, identifier: str, text: str, description: str, level: QuestLevel,
-				 stages: dict[str | int, dict[str, Any]]):
+	def __init__(self, identifier: str, text: str, description: str, rank: RankType,
+				 stages: dict[str | int, dict[str, Any]], reward: dict):
 		self.id = identifier
 		self.text = text
-		self.level = level
+		self.rank = rank
 		self.description = description
+		self.reward = reward
 		self.stages: dict[str | int, Stage] = {i: Stage(j) for i, j in stages.items()}
 
 	def __repr__(self):
@@ -195,7 +176,7 @@ class QuestState:
 		goal = self.goals[num]
 		return goal
 
-	def process_rewards(self) -> dict | NoReturn:
+	def process_rewards(self) -> NoReturn:
 		""" Выдаёт награды за прохождение стадии. """
 		rewards = self.rewards
 
@@ -204,7 +185,6 @@ class QuestState:
 			self.update(new_stage)
 		elif rewards[0] == 'end':
 			self.done = True
-			return rewards[1]
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
@@ -296,19 +276,18 @@ class QuestManager:
 		if not quest.done:
 			quest.complete(num)
 
-	def is_done(self, identifier: str) -> bool:
+	def is_done(self) -> bool:
 		"""
 		Проверяет выполнено ли задание.
 
 		Возвращается:
 			bool: True если задание выполнено, иначе False.
 		"""
-		quest = self.get_quest(identifier)
-		if quest:
-			return quest.id in [q.quest.id for q in self.active_quests if q.done]
-		raise ValueError(f"Quest {identifier} not found")
+		if not len(self.active_quests):
+			return False
+		return self.active_quests[0].done
 
-	def quest_been_launched(self, identifier: str) -> bool:
+	def quest_been_launched(self) -> bool:
 		""" Квест был запущен. """
 		return bool(self.active_quests)
 

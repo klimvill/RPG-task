@@ -2,15 +2,16 @@ import random
 import re
 import sys
 from datetime import date
+from optparse import OptionParser
 
 from .awards import AwardsManager
+from .config import NUMBER_QUEST_STORE, RANK_EXPERIENCE_MULTIPLIER, NUMBER_ITEM_STORE
 from .console import AppConsole
-from .content import all_daily_tasks, all_quest, all_quest_items
+from .content import all_items, all_quest, guild_welcome_text_1, guild_welcome_text_2
 from .daily_tasks import DailyTaskManager
-from .data.config import NUMBER_DAILY_TASKS
 from .database import all_save, read_tasks, read_player_info, read_inventory
 from .inventory import Inventory, ItemType
-from .player import Player, SKILL_DESCRIPTIONS
+from .player import Player, SKILL_DESCRIPTIONS, RankType
 from .quests import QuestManager
 from .tasks import TaskManager
 from .utils import skill_check, get_item
@@ -39,7 +40,7 @@ class Interface:
 		add_tasks(): Функция добавления пользовательских заданий.
 		mark_completion_tasks(): Функция отметки выполнения задач.
 		delete_tasks(): Функция удаления заданий.
-		quest_shop(): Магазин квестов.
+		guild(): Функция гильдии.
 		skill_shop(): Функция прокачки навыков.
 		view_inventory(): Просмотр инвентаря.
 
@@ -83,8 +84,8 @@ class Interface:
 			'Посмотреть задания',
 			'Добавить задания',
 			'Выполнить задания',
-			'Удалить задание',
-			'Лавка квестов',
+			'Удалить задания',
+			'Гильдия авантюристов',
 			'Лавка навыков',
 			'Инвентарь',
 			'Выход',
@@ -100,7 +101,7 @@ class Interface:
 		elif command == '4':
 			self.delete_tasks()
 		elif command == '5':
-			self.quest_shop()
+			self.guild()
 		elif command == '6':
 			self.skill_shop()
 		elif command == '7':
@@ -126,8 +127,7 @@ class Interface:
 
 		while (line := self.console.input('[bold cyan]Введите задание: [/bold cyan]')) != '':
 			# Разделение задания на компоненты #
-			task = re.sub(r'\[.*?]', '', line)
-			task = re.sub(r'\(.*?\)', '', task).rstrip()
+			task = re.sub(r'\[.*?]', '', line).rstrip()
 			skills = re.findall(r'\[([^]]*)]', line)
 
 			# Определение навыков #
@@ -138,7 +138,16 @@ class Interface:
 				skills_result = list(skills_result)[:3]
 
 			# Добавление задачи в список #
-			self.task_manager.add_task(task, skills_result)
+			parser = OptionParser()
+			parser.add_option('-e', '--every_day', dest='every_day', action='store_true',
+							  help='Делает задачу ежедневной.')
+
+			options, args = parser.parse_args(task.split())
+
+			if options.every_day:
+				self.daily_tasks_manager.add_task(' '.join(args), skills_result)
+			else:
+				self.task_manager.add_task(task, skills_result)
 
 	def mark_completion_tasks(self):
 		""" Функция отметки выполнения задач. """
@@ -156,7 +165,7 @@ class Interface:
 		nums_user_tasks, nums_daily_tasks, nums_quests = [], [], []
 		for num in nums:
 			if num < user_tasks_count:
-				task = self.task_manager.get_task(num - 1)
+				task = self.task_manager.get_task(num)
 				nums_user_tasks.append(num)
 
 			elif num < daily_tasks_count:
@@ -190,47 +199,46 @@ class Interface:
 
 		# Ежедневные задания #
 		for num in sorted(nums_daily_tasks, reverse=True):
-			done = self.daily_tasks_manager.complete(num)
+			self.daily_tasks_manager.complete(num)
 
-			if done:
-				self.console.print('\n[dim]Вы выполнили все ежедневные задания, вот ваша награда:')
+		if len(nums_daily_tasks) > 0:
+			self.console.print('\n[d]Награда за выполнение ежедневных заданий')
 
-				gold_daily_tasks, skills_exp_daily_tasks, items_daily_tasks = self.awards_manager.get_rewards_daily_tasks()
+			gold_d, skills_exp_d, items_d = self.awards_manager.get_rewards_daily_tasks(nums_daily_tasks)
 
-				gold += gold_daily_tasks
+			self.console.print(f'[yellow]Золото: [green]+{round(gold_d, 2)}')
+			self.console.print_tree_skills('[magenta]Навыки:', skills_exp_d)
+			self.console.print_item_tree(items_d)
 
-				self.console.print(f'[yellow]Золото: [green]+{round(gold_daily_tasks, 2)}')
-				self.console.print_tree_skills('[magenta]Навыки:', skills_exp_daily_tasks)
+			gold += gold_d
+			items.extend(items_d)
 
-				if items_daily_tasks:
-					self.console.print_item_tree(items_daily_tasks)
-					items.extend(items_daily_tasks)
-
-				for skill, exp in skills_exp_daily_tasks.items():
-					if skill in skills_exp:
-						skills_exp[skill] += exp
-					else:
-						skills_exp[skill] = exp
+			for skill, exp in skills_exp_d.items():
+				if skill in skills_exp:
+					skills_exp[skill] += exp
+				else:
+					skills_exp[skill] = exp
 
 		# Квест #
 		for num in sorted(nums_quests, reverse=True):
 			self.quest_manager.complete_goal(num)
 
-		active_quests = self.quest_manager.active_quests
-		if active_quests and active_quests[0].done:
-			self.console.print('\n[dim]Вы выполнили квест, вот ваша награда:')
+		if self.quest_manager.is_done():
+			rewards = self.quest_manager.active_quests[0].quest.reward
 
-			reward = active_quests[0].process_rewards()
-			gold_quests, items_quests = reward['gold'], list(
-				map(lambda identifier: get_item(identifier), reward['items']))
+			gold_q = rewards['gold']
+			items_q = [get_item(item) for item in rewards['items']]
 
-			gold += gold_quests
+			self.console.print('\n[d]Вы выполнили квест, вот ваша награда:')
 
-			self.console.print(f'[yellow]Золото: [green]+{round(gold_quests, 2)}')
+			if self.player.add_experience():  # Добавление опыта
+				self.console.print(f'[blue]Вы получили {RankType.description(self.player.rank)} ранг.')
 
-			if items_quests:
-				self.console.print_item_tree(items_quests)
-				items.extend(items_quests)
+			self.console.print(f'[yellow]Золото: [green]+{round(gold_q, 2)}')
+			self.console.print_item_tree(items_q)
+
+			gold += gold_q
+			items.extend(items_q)
 
 			self.quest_manager.clear_active_quest()
 
@@ -239,17 +247,15 @@ class Interface:
 		for skill, exp in skills_exp.items():
 			self.player.skills[skill.skill_type].add_exp(exp)
 
-		check = False
+		printed_flag = True
 		for item in items:
 			amount = self.inventory.take(item, 1)
 
-			if amount > 0:
-				if not check:
-					check = True
-					self.console.print(
-						f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
+			if amount and printed_flag:
+				self.console.print(f'\n[red]В вашем инвентаре закончилось место, лишние предметы будут проданы автоматически.')
+				printed_flag = False
 
-				self.console.print(f'- {item.name} [green]+{item.sell}')
+			if not printed_flag:
 				self.player.gold.add_money(item.sell)
 
 		if len(nums_user_tasks + nums_daily_tasks + nums_quests) != 0:
@@ -257,74 +263,160 @@ class Interface:
 
 	def delete_tasks(self):
 		""" Функция удаления заданий. """
-		user_tasks = self.task_manager.tasks
-
 		self.console.title('Удаление заданий, чтобы выйти нажмите enter')
-		# Поскольку мы не можем удалить ежедневные задания или квесты, то печатать их необязательно.
-		self.console.print_user_tasks()
+
+		# Поскольку мы не можем удалить квесты, то печатать их необязательно.
+		user_task_count = self.console.print_user_tasks()
+		daily_task_count = self.console.print_daily_tasks(user_task_count)
+
 		command = self.console.input('\nКакие задания вы хотите удалить: ')
 
 		if command == '': return
-		nums = set([int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= len(user_tasks)])
+		nums = set([int(i) for i in re.findall(r'\d+', command) if 0 < int(i) < daily_task_count])
 		if not nums: return
 
-		if self.console.input(
-				'[red]Если вы удалите задачи, то потеряете накопленный опыт. Вы уверенны? [Y/n]: ') != 'Y':
+		if self.console.input('[red]Если вы удалите задачи, то потеряете золото и накопленный опыт. Вы уверенны? [Y/n]: ') != 'Y':
 			return
 
 		# Вывод удалённых задач #
 		self.console.title('Удалённые задачи, чтобы выйти нажмите enter')
 
-		for num in nums:
-			self.console.print(f'- [red]{self.task_manager.get_task(num).text}')
+		nums_user_tasks = []
+		nums_daily_tasks = []
 
-		gold, skills_exp, items = self.awards_manager.get_rewards_user_tasks(nums, False)
+		for num in nums:
+			if num < user_task_count:
+				self.console.print(f'- [red]{self.task_manager.get_task(num).text}')
+				nums_user_tasks.append(num)
+			else:
+				num = num - user_task_count
+				self.console.print(f'- [red]{self.daily_tasks_manager.get_daily_tasks(num).text}')
+				nums_daily_tasks.append(num)
+
+		gold, skills_exp, items = self.awards_manager.get_rewards_user_tasks(nums_user_tasks, False)
+		gold_d, skills_exp_d, items_d = self.awards_manager.get_rewards_daily_tasks(nums_daily_tasks, False)
+
+		gold += gold_d
+		for skill, exp in skills_exp_d.items():
+			if skill in skills_exp:
+				skills_exp[skill] += exp
+			else:
+				skills_exp[skill] = exp
 
 		self.console.print(f'\n[yellow]Золото: [red]-{round(gold, 2)}')
 
-		if skills_exp:
-			self.console.print_tree_skills('[magenta]Навыки:', skills_exp, minus=True)
+		self.console.print_tree_skills('[magenta]Навыки:', skills_exp, minus=True)
 
 		self.player.gold.payment(gold)
 		for skill, exp in skills_exp.items():
 			skill.reduce_exp(exp)
 
 		# Удаление задач #
-		for num in sorted(nums, reverse=True):
+		for num in sorted(nums_user_tasks, reverse=True):
 			self.task_manager.delete_task(num)
+		for num in sorted(nums_daily_tasks, reverse=True):
+			self.daily_tasks_manager.delete_task(num)
 
 		input()
 
-	def quest_shop(self):
-		""" Магазин квестов. """
-		self.console.title('Лавка предметов, чтобы выйти нажмите enter')
+	def guild(self):
+		""" Функция гильдии. """
+		# Регистрация игрока #
+		if not self.player.name:  # Имя зарегистрированного пользователя не может быть пустой строкой.
+			self.console.title('Гильдия, чтобы выйти нажмите enter')
+			self.console.print(guild_welcome_text_1)
 
-		self.console.print_shop_quest()
+			while not (name := self.console.input('[cyan]Введите имя: ')):
+				self.console.print('[d magenta]Работник[/]: Имя не может быть пустым.\n')
+			self.player.name = name
 
-		command = self.console.input('\n\nКакие квесты вы хотите купить: ')
+			self.console.print(guild_welcome_text_2)
+			self.console.input()
 
-		if command == '': return
-		nums = [int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= len(all_quest_items)]
-		if not nums: return
+		# Основной цикл функции #
+		while True:
+			self.console.title('Гильдия, чтобы выйти нажмите enter')
 
-		self.console.print()
-		for num in nums:
-			quest_item = all_quest_items[num - 1]
+			name, rank, experience = self.player.name, self.player.rank, self.player.experience
+			rank_str = RankType.description(rank)
+			progress_bar = self.console.create_progress_bar(experience, RANK_EXPERIENCE_MULTIPLIER * rank)
 
-			if self.player.gold.gold >= quest_item.cost:
-				amount = self.inventory.take(quest_item, 1)
+			self.console.print(
+				'[d]------------------------------------------[/]\n'
+				f' [yellow]Имя:[/] {name}  [yellow]Ранг:[/] {rank_str}\n'
+				f' [yellow]Опыт:[/] {progress_bar}\n'
+				'[d]------------------------------------------'
+			)
+			self.console.print(
+				'[b green]Услуги гильдии авантюристов[/]\n'
+				'  [green]t[white] - взять квест[/]\n'
+				'  [green]s[white] - магазин[/]\n'
+				'  [green]r[white] - рейтинг[/]\n'
+			)
 
-				if amount > 0:
-					self.console.print(
-						f'[red]В вашем инвентаре закончилось место, квест "{quest_item.name}" не был куплен!')
+			command = self.console.input('Что вы хотите сделать: ')
+
+			if command == 't':
+				self.console.title('Доска квестов, чтобы выйти нажмите enter')
+
+				# Квесты, подходящие по рангу.
+				quests = [self.quest_manager.get_quest(quest_id) for quest_id in self.player.shops_save['quests']]
+
+				# todo: Убрать, когда квестов станет достаточно
+				number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
+
+				self.console.print_shop_quest(quests)
+
+				command = self.console.input('Какой квест вы хотите взять: ')
+				if command == '': continue
+				num = [int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= number_quest_store]
+				if not num: continue
+
+				quest = quests[num[0] - 1]
+
+				if not self.quest_manager.quest_been_launched():
+					self.quest_manager.start_quest(quest.id)
+					self.console.print('[green]Квест успешно активирован!')
 				else:
-					self.player.gold.payment(quest_item.cost)
-					self.console.print(f'- [green]{quest_item.name}')
+					self.console.print('[red]Вы не выполнили предыдущий квест!')
 
-			else:
-				self.console.print(f'[red]Вам не хватило денег на покупку квеста "{quest_item.name}"!')
+				self.console.input()
 
-		self.console.input()
+			elif command == 's':
+				self.console.title('Магазин, чтобы выйти нажмите enter')
+
+				items = [get_item(item_id) for item_id in self.player.shops_save['items']]
+
+
+				self.console.print_shop(items)
+
+				command = self.console.input('Какие предметы вы хотите купить: ')
+				if command == '': continue
+				nums = [int(i) for i in re.findall(r'\d+', command) if 0 < int(i) <= NUMBER_ITEM_STORE]
+				if not nums: continue
+
+				self.console.title('Магазин, чтобы выйти нажмите enter')
+				items = [items[num - 1] for num in nums]
+
+				printed_flag = True
+				for item in items:
+					amount = self.inventory.take(item, 1)
+					if not amount:
+						self.console.print(f'- {item.name}')
+						self.player.gold.payment(item.cost)
+
+					elif printed_flag:
+						self.console.print(f'\n[red]В вашем инвентаре закончилось место.')
+						printed_flag = False
+
+				self.console.input()
+
+			elif command == 'r':
+				self.console.title('Рейтинг, чтобы выйти нажмите enter')
+				self.console.input()
+
+			elif command == '':
+				break
 
 	def skill_shop(self):
 		""" Функция прокачки навыков. """
@@ -333,7 +425,7 @@ class Interface:
 			skills = self.player.skills
 
 			self.console.title('Лавка навыков, чтобы выйти нажмите enter')
-			self.console.print_table_price(gold, skills)
+			self.console.print_skill_shop(gold, skills)
 			self.console.print(f'[yellow]Золото: {round(gold, 2)}\n')
 
 			command = self.console.input('Какие навыки хотите прокачать: ')
@@ -382,7 +474,7 @@ class Interface:
 				"  [green]w[white] - надеть/снять[/]\n"
 				"  [green]u[white] - использовать[/]\n"
 				"  [green]s[white] - продать[/]\n"
-				"  [green]e[white] - отмена[/]"
+				"  [green]e[white] - отмена[/]\n"
 			)
 			command = self.console.input('Что вы хотите сделать с предметом: ')
 
@@ -410,8 +502,7 @@ class Interface:
 
 			elif command == "u":
 				if item.is_usable and not item.is_wearable:
-					if item.effects.get('quest') is not None and not self.quest_manager.quest_been_launched(
-							item.effects.get('quest')):
+					if item.effects.get('quest') is not None and not self.quest_manager.quest_been_launched():
 						self.quest_manager.start_quest(item.effects.get('quest'))
 
 						self.console.print('[green]Квест успешно активирован!')
@@ -430,7 +521,7 @@ class Interface:
 				else:
 					self.console.print("[red]Вы не можете это продать")
 
-			elif command == "e":
+			else:
 				continue
 
 			input()
@@ -449,21 +540,20 @@ class Interface:
 		self.player.load(player_info)
 		self.inventory.load(inventory)
 
-		self.daily_tasks_manager.daily_tasks.update(all_daily_tasks)
 		self.daily_tasks_manager.load(tasks['daily_tasks'])
 
 		# Проверяем, что ежедневное задание актуально.
 		today = str(date.today())
 		if self.daily_tasks_manager.date != today:
-			complete = self.daily_tasks_manager.update(
-				random.sample(list(all_daily_tasks.values()), NUMBER_DAILY_TASKS), today)
+			not_complete_tasks = self.daily_tasks_manager.update(today)
 
 			# Если предыдущие задания не были выполнены, то наказываем игрока за это.
-			if not complete:
+			if not_complete_tasks:
 				self.console.title('Наказание за невыполнение заданий, чтобы выйти нажмите enter')
 				self.console.print('[dim]Вы не закончили предыдущее ежедневное задание:')
 
-				gold, skills_exp, items = self.awards_manager.get_rewards_daily_tasks(need_items=False)
+				gold, skills_exp, items = self.awards_manager.get_rewards_daily_tasks(not_complete_tasks,
+																					  need_items=False)
 
 				self.console.print(f'[yellow]Золото: [red]-{round(gold, 2)}')
 				self.console.print_tree_skills('[magenta]Навыки:', skills_exp, minus=True)
@@ -473,6 +563,16 @@ class Interface:
 					skill.reduce_exp(exp)
 
 				self.console.input()
+
+		if self.player.shops_save['date'] != today:
+			quests = [quest.id for quest in all_quest if self.player.rank - 2 < quest.rank < self.player.rank + 2]
+			# todo: Убрать, когда квестов станет достаточно
+			number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
+			quests = random.sample(quests, k=number_quest_store)
+
+			items = random.sample([item.id for items in all_items.values() for item in items.values()], k=NUMBER_ITEM_STORE)
+
+			self.player.shops_save = {'date': today, 'quests': quests, 'items': items}
 
 	def save(self):
 		""" Сохранение данных. """
