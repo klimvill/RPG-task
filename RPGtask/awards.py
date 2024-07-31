@@ -3,8 +3,8 @@ from __future__ import annotations
 from random import Random
 from typing import TYPE_CHECKING
 
+from .config import *
 from .content import all_items
-from RPGtask.config import *
 from .inventory import Item
 from .utils import calculate_item_bonus
 

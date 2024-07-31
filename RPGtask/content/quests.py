@@ -1,6 +1,5 @@
-from ..quests import Quest
 from ..player import RankType
-
+from ..quests import Quest
 
 forgotten_city = Quest('forgotten_city', 'Забытый город', 'Исследуйте город, познакомитесь с местными', RankType.S,
 					   {

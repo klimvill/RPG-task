@@ -37,6 +37,26 @@ class AppConsole:
 		panel_print(text, title, title_align, border_style): Печатает текст в 	панели.
 		title(text, clear): Печатает заголовок, в котором обычно находится справочная информация.
 
+		print_tree_skills(title, skills): Печатает дерево наград для навыков.
+		print_task_tree(): Печатает дерево для просмотра всех заданий.
+
+		print_user_tasks(): Печатает пользовательские задания.
+		print_daily_tasks(count): Печатает ежедневные задания.
+		print_quests(count): Печатает квесты.
+		print_all_task(): Печатает все задания.
+
+		print_item_tree(items): Печатает красивое представление найденных предметов.
+
+		print_shop_quest(quests): Печатает магазин квестов.
+		print_shop(items): Печатает магазин предмет.
+		print_skill_shop(gold, skills): Печатает магазин навыков.
+
+		presence_item(item): Отображает информацию о предмете.
+		show_item(slot): Генерирует строковое представление предмета в заданном слоте.
+		show_inventory():Отображает инвентарь игрока.
+
+		create_progress_bar(value, maximum):Создаёт индикатор выполнения.
+
 		input(): Запрашивает ввод пользователя.
 		print(): Выводит заданные аргументы.
 		clear_console(): Очищает консоль.
@@ -191,7 +211,7 @@ class AppConsole:
 
 			for sid in active.done_stages:
 				stage = active.quest.stages[sid]
-				quest_tree.add(f'[[green]x[/]] [green]{stage.name}')  # f"[white][[green]x[white]] [green]{stage.name}"
+				quest_tree.add(f'[[green]x[/]] [green]{stage.name}')
 
 			if active.done:
 				continue
@@ -324,6 +344,12 @@ class AppConsole:
 			self.console.print(tree)
 
 	def print_shop_quest(self, quests: list[Quest]):
+		"""
+		Печатает магазин квестов.
+
+		Аргументы:
+			quests (list[Quest]): Список квестов, которые будут в магазине.
+		"""
 		table = Table(box=box.SIMPLE)
 
 		table.add_column('№')
@@ -349,6 +375,12 @@ class AppConsole:
 		self.console.print(table)
 
 	def print_shop(self, items: list[Item]):
+		"""
+		Печатает магазин предмет.
+
+		Аргументы:
+			items (list[Item]): Список предметов, которые будут в магазине.
+		"""
 		table = Table(box=box.SIMPLE)
 
 		table.add_column('№')
@@ -364,9 +396,9 @@ class AppConsole:
 
 		self.console.print(table)
 
-	def print_table_price(self, gold: float, skills: list[Skill]):
+	def print_skill_shop(self, gold: float, skills: list[Skill]):
 		"""
-		Печатает таблицу цен.
+		Печатает магазин навыков.
 
 		Аргументы:
 			gold (float): Текущее количество денег у пользователя.
@@ -508,6 +540,16 @@ class AppConsole:
 
 	@staticmethod
 	def create_progress_bar(value: int, maximum: int, color: str = 'green', width: int = 26, suffix: bool = True):
+		"""
+		Создаёт индикатор выполнения.
+
+		Аргументы:
+			value (int): Значение индикатора выполнения.
+			maximum (int): Максимальное значение индикатора выполнения.
+			color (str): Цвет индикатора. По умолчанию green.
+			width (int): Длина индикатора. По умолчанию 26.
+			suffix (bool): Добавить ли текущее значение и максимальное значение.
+		"""
 		sym_len = int(value / maximum * width) if maximum else 0
 		suffix = f' {value}/{maximum}' if suffix else ''
 		return f'[[{color}]{'|' * sym_len}{' ' * (width - sym_len)}[/]]{suffix}'

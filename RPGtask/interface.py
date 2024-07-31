@@ -40,7 +40,7 @@ class Interface:
 		add_tasks(): Функция добавления пользовательских заданий.
 		mark_completion_tasks(): Функция отметки выполнения задач.
 		delete_tasks(): Функция удаления заданий.
-		quest_shop(): Магазин квестов.
+		guild(): Функция гильдии.
 		skill_shop(): Функция прокачки навыков.
 		view_inventory(): Просмотр инвентаря.
 
@@ -328,7 +328,7 @@ class Interface:
 
 			while not (name := self.console.input('[cyan]Введите имя: ')):
 				self.console.print('[d magenta]Работник[/]: Имя не может быть пустым.\n')
-			self.player.set_name(name)
+			self.player.name = name
 
 			self.console.print(guild_welcome_text_2)
 			self.console.input()
@@ -342,10 +342,10 @@ class Interface:
 			progress_bar = self.console.create_progress_bar(experience, RANK_EXPERIENCE_MULTIPLIER * rank)
 
 			self.console.print(
-				'[d]-----------------------------------------[/]\n'
+				'[d]------------------------------------------[/]\n'
 				f' [yellow]Имя:[/] {name}  [yellow]Ранг:[/] {rank_str}\n'
 				f' [yellow]Опыт:[/] {progress_bar}\n'
-				'[d]-----------------------------------------'
+				'[d]------------------------------------------'
 			)
 			self.console.print(
 				'[b green]Услуги гильдии авантюристов[/]\n'
@@ -360,11 +360,10 @@ class Interface:
 				self.console.title('Доска квестов, чтобы выйти нажмите enter')
 
 				# Квесты, подходящие по рангу.
-				quests = [quest for quest in all_quest if self.player.rank - 2 < quest.rank < self.player.rank + 2]
+				quests = [self.quest_manager.get_quest(quest_id) for quest_id in self.player.shops_save['quests']]
 
 				# todo: Убрать, когда квестов станет достаточно
 				number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
-				quests = random.sample(quests, k=number_quest_store)
 
 				self.console.print_shop_quest(quests)
 
@@ -386,8 +385,8 @@ class Interface:
 			elif command == 's':
 				self.console.title('Магазин, чтобы выйти нажмите enter')
 
-				items = random.sample([item for items in all_items.values() for item in items.values()],
-									  k=NUMBER_ITEM_STORE)
+				items = [get_item(item_id) for item_id in self.player.shops_save['items']]
+
 
 				self.console.print_shop(items)
 
@@ -426,7 +425,7 @@ class Interface:
 			skills = self.player.skills
 
 			self.console.title('Лавка навыков, чтобы выйти нажмите enter')
-			self.console.print_table_price(gold, skills)
+			self.console.print_skill_shop(gold, skills)
 			self.console.print(f'[yellow]Золото: {round(gold, 2)}\n')
 
 			command = self.console.input('Какие навыки хотите прокачать: ')
@@ -564,6 +563,16 @@ class Interface:
 					skill.reduce_exp(exp)
 
 				self.console.input()
+
+		if self.player.shops_save['date'] != today:
+			quests = [quest.id for quest in all_quest if self.player.rank - 2 < quest.rank < self.player.rank + 2]
+			# todo: Убрать, когда квестов станет достаточно
+			number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
+			quests = random.sample(quests, k=number_quest_store)
+
+			items = random.sample([item.id for items in all_items.values() for item in items.values()], k=NUMBER_ITEM_STORE)
+
+			self.player.shops_save = {'date': today, 'quests': quests, 'items': items}
 
 	def save(self):
 		""" Сохранение данных. """

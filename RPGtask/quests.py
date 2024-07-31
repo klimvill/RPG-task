@@ -1,4 +1,5 @@
 from typing import Any, NoReturn
+
 from .player import RankType
 
 

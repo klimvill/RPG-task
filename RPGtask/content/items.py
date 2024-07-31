@@ -7,7 +7,6 @@ quest.set_type(ItemType.ITEM)
 quest.set_effect('quest', 'forgotten_city')
 quest.set_cost(200)
 
-
 #################################           Шлемы - 1 уровень           ################################################
 ragged_hood = Item('ragged_hood', 'Рванный капюшон', 'кусок ткани, который можно носить на голове.')
 ragged_hood.set_type(ItemType.HELMET)
@@ -72,20 +71,17 @@ battered_quilted_armor.set_type(ItemType.BREASTPLATE)
 # todo: Добавить эффекты
 battered_quilted_armor.set_cost(3, 1.5)
 
-
-chain_mail = Item('chain_mail', 'Кольчуга', 'металлические кольца поверх стёганой ткани неплохо защищают от острых лезвий.')
+chain_mail = Item('chain_mail', 'Кольчуга',
+				  'металлические кольца поверх стёганой ткани неплохо защищают от острых лезвий.')
 chain_mail.set_type(ItemType.BREASTPLATE)
 # todo: Добавить эффекты
 chain_mail.set_cost(10, 5)
-
 
 ################################           Нагрудник - 2 уровень           #############################################
 quilted_armor = Item('quilted_armor', 'Стёганка', 'несколько слоёв ткани, крепко соединённых между собой.')
 quilted_armor.set_type(ItemType.BREASTPLATE)
 # todo: Добавить эффекты
 quilted_armor.set_cost(30, 15)
-
-
 
 #################################           Оружие - 1 уровень           ###############################################
 #################################           Оружие - 2 уровень           ###############################################
@@ -149,7 +145,8 @@ amulet_phosphophyllite.set_cost(500, 250)
 
 all_items = {
 	'one': {
-		'ragged_hood': ragged_hood, 'old_helmet': old_helmet, 'wooden_circlet': wooden_circlet, 'tin_helmet': tin_helmet,
+		'ragged_hood': ragged_hood, 'old_helmet': old_helmet, 'wooden_circlet': wooden_circlet,
+		'tin_helmet': tin_helmet,
 
 		'chain_mail': chain_mail, 'battered_quilted_armor': battered_quilted_armor,
 
