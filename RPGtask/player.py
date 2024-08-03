@@ -1,6 +1,74 @@
 from enum import IntEnum
 
-from .config import RANK_EXPERIENCE_MULTIPLIER
+
+class SkillType(IntEnum):
+	""" Типы навыков. """
+	INTELLECT = 0
+	SCIENCE = 1
+	LANGUAGES = 2
+	ART = 3
+	POWER = 4
+	ENDURANCE = 5
+	FINANCE = 6
+	CRAFT = 7
+
+	@staticmethod
+	def description(skill):
+		""" Описание навыка """
+		return SKILL_DESCRIPTIONS[skill]
+
+
+SKILL_DESCRIPTIONS = {
+	SkillType.INTELLECT: 'Интеллект',
+	SkillType.SCIENCE: 'Наука',
+	SkillType.LANGUAGES: 'Языки',
+	SkillType.ART: 'Искусство',
+	SkillType.POWER: 'Сила',
+	SkillType.ENDURANCE: 'Выносливость',
+	SkillType.FINANCE: 'Финансы',
+	SkillType.CRAFT: 'Ремесло'
+}
+
+
+class RankType(IntEnum):
+	""" Типы рангов. """
+	F = 1
+	E = 2
+	D = 3
+	C = 4
+	B = 5
+	A = 6
+	S = 7
+
+	@staticmethod
+	def description(rank):
+		""" Описание ранга. """
+		return RANK_DESCRIPTIONS[rank]
+
+	@staticmethod
+	def experience(rank):
+		""" Необходимое количество опыта для получения ранга. """
+		return RANK_EXPERIENCE[rank]
+
+
+RANK_DESCRIPTIONS = {
+	RankType.F: 'F',
+	RankType.E: 'E',
+	RankType.D: 'D',
+	RankType.C: 'C',
+	RankType.B: 'B',
+	RankType.A: 'A',
+	RankType.S: 'S',
+}
+RANK_EXPERIENCE = {
+	RankType.F: 15,
+	RankType.E: 35,
+	RankType.D: 50,
+	RankType.C: 70,
+	RankType.B: 100,
+	RankType.A: 120,
+	RankType.S: 200,
+}
 
 
 class Gold:
@@ -50,35 +118,6 @@ class Gold:
 			self.gold = 0
 
 
-class SkillType(IntEnum):
-	""" Типы навыков. """
-	INTELLECT = 0
-	SCIENCE = 1
-	LANGUAGES = 2
-	ART = 3
-	POWER = 4
-	ENDURANCE = 5
-	FINANCE = 6
-	CRAFT = 7
-
-	@staticmethod
-	def description(skill):
-		""" Описание навыка """
-		return SKILL_DESCRIPTIONS[skill]
-
-
-SKILL_DESCRIPTIONS = {
-	SkillType.INTELLECT: 'Интеллект',
-	SkillType.SCIENCE: 'Наука',
-	SkillType.LANGUAGES: 'Языки',
-	SkillType.ART: 'Искусство',
-	SkillType.POWER: 'Сила',
-	SkillType.ENDURANCE: 'Выносливость',
-	SkillType.FINANCE: 'Финансы',
-	SkillType.CRAFT: 'Ремесло'
-}
-
-
 class Skill:
 	"""
 	Объект навыка.
@@ -126,33 +165,6 @@ class Skill:
 			self.exp -= num
 		else:
 			self.exp = 0
-
-
-class RankType(IntEnum):
-	""" Типы рангов. """
-	F = 1
-	E = 2
-	D = 3
-	C = 4
-	B = 5
-	A = 6
-	S = 7
-
-	@staticmethod
-	def description(rank):
-		""" Описание ранга. """
-		return RANK_DESCRIPTIONS[rank]
-
-
-RANK_DESCRIPTIONS = {
-	RankType.F: 'F',
-	RankType.E: 'E',
-	RankType.D: 'D',
-	RankType.C: 'C',
-	RankType.B: 'B',
-	RankType.A: 'A',
-	RankType.S: 'S',
-}
 
 
 class Player:
@@ -212,7 +224,7 @@ class Player:
 
 	def add_experience(self) -> bool:
 		""" Добавляет опыт за выполнение квеста. """
-		max_exp_rank = RankType.S * RANK_EXPERIENCE_MULTIPLIER
+		max_exp_rank = RankType.experience(RankType.S)
 
 		if self.rank == RankType.S and self.experience >= max_exp_rank - 1:
 			self.experience = max_exp_rank
@@ -220,7 +232,7 @@ class Player:
 
 		self.experience += 1
 
-		if self.experience == self.rank * RANK_EXPERIENCE_MULTIPLIER:
+		if self.experience == RankType.experience(self.rank):
 			self.rank += 1
 			return True
 		return False

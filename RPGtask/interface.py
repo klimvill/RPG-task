@@ -5,7 +5,7 @@ from datetime import date
 from optparse import OptionParser
 
 from .awards import AwardsManager
-from .config import NUMBER_QUEST_STORE, RANK_EXPERIENCE_MULTIPLIER, NUMBER_ITEM_STORE
+from .config import NUMBER_QUEST_STORE, NUMBER_ITEM_STORE
 from .console import AppConsole
 from .content import all_items, all_quest, guild_welcome_text_1, guild_welcome_text_2
 from .daily_tasks import DailyTaskManager
@@ -49,6 +49,10 @@ class Interface:
 	"""
 
 	def __init__(self):
+		self.parser = OptionParser(conflict_handler='resolve')
+		self.parser.add_option('-e', '--every_day', dest='every_day', action='store_true',
+							   help='Делает задачу ежедневной.')
+
 		self.console = AppConsole(self)
 		self.awards_manager = AwardsManager(self)
 
@@ -123,9 +127,9 @@ class Interface:
 		Формат добавления заданий - "task1 [навык, навык, навык]"
 		"""
 		skills_name = SKILL_DESCRIPTIONS.values()
-		self.console.title(f'Добавление заданий, чтобы выйти нажмите enter\n[dim]{", ".join(skills_name)}[/dim]')
+		self.console.title(f'Добавление заданий, чтобы выйти нажмите enter\n[dim]{", ".join(skills_name)}[/dim]\n')
 
-		while (line := self.console.input('[bold cyan]Введите задание: [/bold cyan]')) != '':
+		while (line := self.console.input('[b cyan]Введите задание: [/bold cyan]')) != '':
 			# Разделение задания на компоненты #
 			task = re.sub(r'\[.*?]', '', line).rstrip()
 			skills = re.findall(r'\[([^]]*)]', line)
@@ -138,14 +142,14 @@ class Interface:
 				skills_result = list(skills_result)[:3]
 
 			# Добавление задачи в список #
-			parser = OptionParser()
-			parser.add_option('-e', '--every_day', dest='every_day', action='store_true',
-							  help='Делает задачу ежедневной.')
+			task_sp = task.split()
+			if '-e' in task_sp or '--every_day' in task_sp:
+				options, args = self.parser.parse_args(task_sp)
 
-			options, args = parser.parse_args(task.split())
-
-			if options.every_day:
-				self.daily_tasks_manager.add_task(' '.join(args), skills_result)
+				if options.every_day:
+					self.daily_tasks_manager.add_task(' '.join(args), skills_result)
+				else:
+					self.task_manager.add_task(task, skills_result)
 			else:
 				self.task_manager.add_task(task, skills_result)
 
@@ -178,7 +182,7 @@ class Interface:
 				nums_daily_tasks.append(num)
 
 			elif num < quests_count:
-				num = num - user_tasks_count - daily_tasks_count + 1
+				num = num - daily_tasks_count
 
 				task = self.quest_manager.active_quests[0].get_goal(num)
 				nums_quests.append(num)
@@ -339,7 +343,7 @@ class Interface:
 
 			name, rank, experience = self.player.name, self.player.rank, self.player.experience
 			rank_str = RankType.description(rank)
-			progress_bar = self.console.create_progress_bar(experience, RANK_EXPERIENCE_MULTIPLIER * rank)
+			progress_bar = self.console.create_progress_bar(experience, RankType.experience(rank))
 
 			self.console.print(
 				'[d]------------------------------------------[/]\n'
@@ -387,7 +391,6 @@ class Interface:
 
 				items = [get_item(item_id) for item_id in self.player.shops_save['items']]
 
-
 				self.console.print_shop(items)
 
 				command = self.console.input('Какие предметы вы хотите купить: ')
@@ -413,7 +416,7 @@ class Interface:
 
 			elif command == 'r':
 				self.console.title('Рейтинг, чтобы выйти нажмите enter')
-				self.console.input()
+				self.console.input('Функция в разработке.')
 
 			elif command == '':
 				break
@@ -441,7 +444,7 @@ class Interface:
 				demand_exp, demand_gold = self.awards_manager.get_price_skill(level)
 
 				if demand_exp > exp: continue
-				if gold - demand_gold < 0: break
+				if self.player.gold.gold - demand_gold < 0: break
 
 				self.player.gold.payment(demand_gold)
 				skill.add_level()
@@ -508,10 +511,34 @@ class Interface:
 						self.console.print('[green]Квест успешно активирован!')
 
 						slot.amount -= 1
+
+					elif item.effects.get('textbook') is not None:  # Учебники
+						text = item.effects.get('text')
+						effect = item.effects.get('textbook')
+						new_effect = {}
+
+						for skill, exp in effect.items():
+							new_effect[self.player.skills[skill]] = exp
+
+						for skill, exp in new_effect.items():
+							self.player.skills[skill.skill_type].add_exp(exp)
+
+						if text is not None:
+							self.console.title(f'{item.name}, чтобы выйти нажмите enter')
+							self.console.print(text)
+
+						self.console.print_tree_skills('\n[magenta]Навыки:', new_effect)
+
+						slot.amount -= 1
+
+					elif item.effects.get('text') is not None:  # Книги
+						self.console.title(f'{item.name}, чтобы выйти нажмите enter')
+						self.console.print(item.effects.get('text'))
+
 					else:
-						self.console.print('[red]Вы не выполнили предыдущий квест!')
+						self.console.print('[red]Вы не можете это использовать')
 				else:
-					self.console.print("[red]Вы не можете это использовать")
+					self.console.print('[red]Вы не можете это использовать')
 
 			elif command == "s":
 				if item.possible_sell:
@@ -570,7 +597,10 @@ class Interface:
 			number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
 			quests = random.sample(quests, k=number_quest_store)
 
-			items = random.sample([item.id for items in all_items.values() for item in items.values()], k=NUMBER_ITEM_STORE)
+			items = random.sample(
+				[item.id for items in all_items.values() for item in items.values()],
+				k=NUMBER_ITEM_STORE
+			)
 
 			self.player.shops_save = {'date': today, 'quests': quests, 'items': items}
 
