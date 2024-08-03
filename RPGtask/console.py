@@ -381,7 +381,7 @@ class AppConsole:
 		Аргументы:
 			items (list[Item]): Список предметов, которые будут в магазине.
 		"""
-		table = Table(box=box.SIMPLE)
+		table = Table(box=box.MINIMAL)
 
 		table.add_column('№')
 		table.add_column('Предмет', style='magenta')
@@ -446,35 +446,38 @@ class AppConsole:
 		"""
 
 		def get_effects_string(effects: dict[str | int, float]) -> str:
-			if not effects:
+			if not effects or len(effects) == 1 and effects.get('text') is not None:
 				return "[b red]Эффектов нет[/]\n"
 
 			effects_str = "[b red]Эффекты[/]:\n"
 			for key, value in effects.items():
+				if key == 'text': continue
+
 				if key == 'quest':
 					quest = self.interface.quest_manager.get_quest(value)
 					effects_str += f'    Запускает квест: [green]{quest.text.lower()}[/]\n'
-
+				elif key == 'textbook':
+					effects_str += f'   Прокачивает навыки персонажа.\n'
 				elif value > 1:
-					effects_str += f"    {SkillType.description(key)}: [green]+{round(value * 100 - 100)}%[/]\n"
+					effects_str += f'    {SkillType.description(key)}: [green]+{round(value * 100 - 100)}%[/]\n'
 				else:
-					effects_str += f"    {SkillType.description(key)}: [red]{round(value * 100 - 100)}%[/]\n"
+					effects_str += f'    {SkillType.description(key)}: [red]{round(value * 100 - 100)}%[/]\n'
 			return effects_str
 
-		item_type_info = f"[b green]Тип[/]: {ItemType.description(item.type)}\n"
+		item_type_info = f'[b green]Тип[/]: {ItemType.description(item.type)}\n'
 		effects_info = get_effects_string(item.effects)
 		cost_info = (
-			f"[b yellow]Цена покупки[/]: {item.cost}\n"
+			f'[b yellow]Цена покупки[/]: {item.cost}\n'
 			if item.cost > 0
-			else "[b yellow]Не продается[/]\n"
+			else '[b yellow]Не продается[/]\n'
 		)
 		sell_info = (
-			f"[b yellow]Цена продажи[/]: {item.sell}"
+			f'[b yellow]Цена продажи[/]: {item.sell}'
 			if item.sell > 0
-			else "[b yellow]Ничего не стоит[/]"
+			else '[b yellow]Ничего не стоит[/]'
 		)
 
-		result = f"[purple b]{item.name}[/] - [white]{item.description}[/]\n"
+		result = f'[purple b]{item.name}[/] - [white]{item.description}[/]\n'
 		result += item_type_info
 		result += effects_info
 		result += cost_info
