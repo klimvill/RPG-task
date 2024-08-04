@@ -26,6 +26,11 @@ test_book.set_cost(10, 10)
 
 
 
+"""
+Первый уровень - предмет должен иметь не больше двух эффектов и общий бонус в процентах не должен быть больше 20. Цена покупки: 0-20.
+Второй уровень - не больше 4 эффектов, общий бонус в процентах не должен быть больше 50. Цена покупки: 20-80.
+Третий уровень - не больше 6 эффектов, общий бонус в процентах не должен быть больше 100. Цена покупки: 80-бесконечность.
+"""
 #################################           Шлемы - 1 уровень           ################################################
 ragged_hood = Item('ragged_hood', 'Рванный капюшон', 'кусок ткани, который можно носить на голове.')
 ragged_hood.set_type(ItemType.HELMET)
@@ -147,8 +152,8 @@ aqua_heartia.set_cost(600, 300)
 #################################           Кольца - 1 уровень           ###############################################
 silver_ring = Item('silver_ring', 'Серебряное кольцо', 'обычное, ничем не примечательное украшение.')
 silver_ring.set_type(ItemType.RING)
-silver_ring.set_effect(SkillType.LANGUAGES, 1.03)
-silver_ring.set_effect(SkillType.FINANCE, 1.03)
+silver_ring.set_effect(SkillType.LANGUAGES, 1.05)
+silver_ring.set_effect(SkillType.FINANCE, 1.05)
 silver_ring.set_cost(10, 5)
 
 #################################           Кольца - 2 уровень           ###############################################
@@ -169,8 +174,21 @@ phantom_ring.set_effect(SkillType.FINANCE, 1.2)
 phantom_ring.set_effect(SkillType.CRAFT, 1.2)
 phantom_ring.set_cost(600, 300)
 
+
 #################################           Амулеты - 1 уровень           ##############################################
+copper_amulet = Item('copper_amulet', 'Медный амулет', 'дешёвое и неказистое украшение, явно выполнен подмастерьем.')
+copper_amulet.set_type(ItemType.AMULET)
+copper_amulet.set_effect(SkillType.POWER, 1.03)
+copper_amulet.set_effect(SkillType.SCIENCE, 1.03)
+copper_amulet.set_cost(5, 2.5)
+
 #################################           Амулеты - 2 уровень           ##############################################
+amulet_indigolite = Item('amulet_indigolite', 'Амулет с Индиголитом', 'серебряное украшение с тёмно-синим камнем.')
+amulet_indigolite.set_type(ItemType.AMULET)
+amulet_indigolite.set_effect(SkillType.CRAFT, 1.15)
+amulet_indigolite.set_effect(SkillType.FINANCE, 1.15)
+amulet_indigolite.set_cost(40, 20)
+
 #################################           Амулеты - 3 уровень           ##############################################
 amulet_phosphophyllite = Item('amulet_phosphophyllite', 'Амулет с Фоссфофилитом',
 							  'красивое украшение из золота и платины с потрескавшимся камнем.')
@@ -191,6 +209,7 @@ all_items = {
 
 		'silver_ring': silver_ring,
 
+		'copper_amulet': copper_amulet,
 
 		'lost_pet': lost_pet, 'test_book': test_book, 'test_textbook': test_textbook
 	},
@@ -202,6 +221,8 @@ all_items = {
 		'shorty': shorty, 'beretta_70': beretta_70,
 
 		'ring_euclase': ring_euclase,
+
+		'amulet_indigolite': amulet_indigolite,
 	},
 	'three': {
 		'straw_hat': straw_hat, 'stahlhelm': stahlhelm,

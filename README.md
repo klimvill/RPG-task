@@ -18,7 +18,7 @@ RPG task - это менеджер задач с игровой механико
 <div align="center">
   <img alt="Добавление заданий" src="https://i.ibb.co/N1jZmvf/image.png"/>
   <img alt="Просмотр заданий" src="https://i.ibb.co/QFf43WC/image.png"/>
-  <img alt="Награды" src="https://i.ibb.co/2WyjLRv/image.png"/>
+  <img alt="Награды" src="https://i.ibb.co/ns8Tfjy/image.png"/>
   <img alt="Гильдия" src="https://i.ibb.co/bmYJHwW/image.png"/>
   <img alt="Доска квестов" src="https://i.ibb.co/m5mFC7p/image.png"/>
 </div>

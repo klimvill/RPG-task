@@ -191,12 +191,6 @@ class Interface:
 
 		# Пользовательские задания #
 		gold, skills_exp, items = self.awards_manager.get_rewards_user_tasks(nums_user_tasks)
-		if gold:
-			self.console.print(f'\n[yellow]Золото: [green]+{round(gold, 2)}')
-		if skills_exp:
-			self.console.print_tree_skills('[magenta]Навыки:', skills_exp)
-		if items:
-			self.console.print_item_tree(items)
 
 		for num in sorted(nums_user_tasks, reverse=True):
 			self.task_manager.delete_task(num)
@@ -205,23 +199,23 @@ class Interface:
 		for num in sorted(nums_daily_tasks, reverse=True):
 			self.daily_tasks_manager.complete(num)
 
-		if len(nums_daily_tasks) > 0:
-			self.console.print('\n[d]Награда за выполнение ежедневных заданий')
+		gold_d, skills_exp_d, items_d = self.awards_manager.get_rewards_daily_tasks(nums_daily_tasks)
+		gold += gold_d
+		items.extend(items_d)
 
-			gold_d, skills_exp_d, items_d = self.awards_manager.get_rewards_daily_tasks(nums_daily_tasks)
+		for skill, exp in skills_exp_d.items():
+			if skill in skills_exp:
+				skills_exp[skill] += exp
+			else:
+				skills_exp[skill] = exp
 
-			self.console.print(f'[yellow]Золото: [green]+{round(gold_d, 2)}')
-			self.console.print_tree_skills('[magenta]Навыки:', skills_exp_d)
-			self.console.print_item_tree(items_d)
-
-			gold += gold_d
-			items.extend(items_d)
-
-			for skill, exp in skills_exp_d.items():
-				if skill in skills_exp:
-					skills_exp[skill] += exp
-				else:
-					skills_exp[skill] = exp
+		# Сообщения о наградах #
+		if gold:
+			self.console.print(f'\n[yellow]Золото: [green]+{round(gold, 2)}')
+		if skills_exp:
+			self.console.print_tree_skills('[magenta]Навыки:', skills_exp)
+		if items:
+			self.console.print_item_tree(items)
 
 		# Квест #
 		for num in sorted(nums_quests, reverse=True):
