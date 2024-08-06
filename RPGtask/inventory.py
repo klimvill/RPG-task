@@ -100,20 +100,18 @@ class Item:
 		"""
 		self.effects[action] = amount
 
-	def set_cost(self, cost: float, sell: float = -1) -> NoReturn:
+	def set_cost(self, cost: float, sell: float = 0) -> NoReturn:
 		"""
 		Задаёт стоимость продажи и покупки.
 
 		Аргументы:
 			cost (int): Цена покупки.
-			sell (int): Цена продажи. Если равняется -1, то предмет нельзя продать. По умолчанию -1.
+			sell (int): Цена продажи. По умолчанию 0.
 		"""
 		self.cost = cost
+		self.sell = sell
 
-		if sell != -1:
-			self.sell = sell
-		else:
-			self.possible_sell = False
+		self.possible_sell = bool(sell)
 
 	@property
 	def is_wearable(self) -> bool:

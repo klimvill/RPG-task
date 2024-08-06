@@ -1,33 +1,5 @@
 from enum import IntEnum
-
-
-class SkillType(IntEnum):
-	""" Типы навыков. """
-	INTELLECT = 0
-	SCIENCE = 1
-	LANGUAGES = 2
-	ART = 3
-	POWER = 4
-	ENDURANCE = 5
-	FINANCE = 6
-	CRAFT = 7
-
-	@staticmethod
-	def description(skill):
-		""" Описание навыка """
-		return SKILL_DESCRIPTIONS[skill]
-
-
-SKILL_DESCRIPTIONS = {
-	SkillType.INTELLECT: 'Интеллект',
-	SkillType.SCIENCE: 'Наука',
-	SkillType.LANGUAGES: 'Языки',
-	SkillType.ART: 'Искусство',
-	SkillType.POWER: 'Сила',
-	SkillType.ENDURANCE: 'Выносливость',
-	SkillType.FINANCE: 'Финансы',
-	SkillType.CRAFT: 'Ремесло'
-}
+from typing import Any
 
 
 class RankType(IntEnum):
@@ -43,157 +15,131 @@ class RankType(IntEnum):
 	@staticmethod
 	def description(rank):
 		""" Описание ранга. """
-		return RANK_DESCRIPTIONS[rank]
+		return RANK_DESCRIPTIONS[rank][0]
 
 	@staticmethod
 	def experience(rank):
 		""" Необходимое количество опыта для получения ранга. """
-		return RANK_EXPERIENCE[rank]
+		return RANK_DESCRIPTIONS[rank][1]
 
 
 RANK_DESCRIPTIONS = {
-	RankType.F: 'F',
-	RankType.E: 'E',
-	RankType.D: 'D',
-	RankType.C: 'C',
-	RankType.B: 'B',
-	RankType.A: 'A',
-	RankType.S: 'S',
+	RankType.F: ('F', 15),
+	RankType.E: ('E', 35),
+	RankType.D: ('D', 50),
+	RankType.C: ('C', 70),
+	RankType.B: ('B', 100),
+	RankType.A: ('A', 120),
+	RankType.S: ('S', 200),
 }
-RANK_EXPERIENCE = {
-	RankType.F: 15,
-	RankType.E: 35,
-	RankType.D: 50,
-	RankType.C: 70,
-	RankType.B: 100,
-	RankType.A: 120,
-	RankType.S: 200,
+
+
+class SkillType(IntEnum):
+	""" Типы навыков. """
+	INTELLECT = 0
+	SCIENCE = 1
+	LANGUAGES = 2
+	ART = 3
+	POWER = 4
+	ENDURANCE = 5
+	FINANCE = 6
+	CRAFT = 7
+
+	@staticmethod
+	def description(skill):
+		""" Описание навыка. """
+		return SKILL_DESCRIPTIONS[skill]
+
+
+SKILL_DESCRIPTIONS = {
+	SkillType.INTELLECT: 'Интеллект',
+	SkillType.SCIENCE: 'Наука',
+	SkillType.LANGUAGES: 'Языки',
+	SkillType.ART: 'Искусство',
+	SkillType.POWER: 'Сила',
+	SkillType.ENDURANCE: 'Выносливость',
+	SkillType.FINANCE: 'Финансы',
+	SkillType.CRAFT: 'Ремесло'
 }
 
 
 class Gold:
-	"""
-	Объект золота игрока.
-
-	Аргументы:
-		gold (float): Золото игрока. По умолчанию 0.
-
-	Методы:
-		save(): Сохранение информации о количестве денег.
-		load(num): Загрузка информации о количестве денег.
-		add_money(num): Добавляет деньги на баланс пользователя.
-		payment(num): Оплата.
-	"""
-
 	def __init__(self):
 		self.gold: float = 0
 
-	def save(self) -> float:
-		""" Сохранение информации о количестве денег. """
-		return self.gold
+	def payment(self, amount: float):
+		""" Отнимает деньги.  """
+		self.gold -= amount
+		self.gold = self.gold if self.gold > 0 else 0
 
-	def load(self, num: float):
-		""" Загрузка информации о количестве денег. """
-		self.gold = num
-
-	def add_money(self, num: float):
-		"""
-		Добавляет деньги на баланс пользователя.
-
-		Аргументы:
-			num (float): Сумма, на которую увеличится капитал.
-		"""
-		self.gold += num
-
-	def payment(self, num: float):
-		"""
-		Оплата.
-
-		Аргументы:
-			num (float): Сумма, на которую уменьшится капитал.
-		"""
-		if self.gold > num:
-			self.gold -= num
-		else:
-			self.gold = 0
+	def __repr__(self):
+		""" Возвращает строковое представление объекта. """
+		return f"<Gold gold={self.gold}>"
 
 
 class Skill:
-	"""
-	Объект навыка.
-
-	Параметры:
-		skill_type (SkillType): Тип навыка.
-
-	Атрибуты:
-		level (int): Уровень навыка.
-		exp (int): Опыт навыка.
-
-	Методы:
-		save(): Сохранение навыка.
-		load(): Загрузка навыка.
-		add_level(): Прибавляет один уровень.
-		add_exp(): Прибавляет опыт.
-		reduce_exp(): Убавляет опыт.
-	"""
-
 	def __init__(self, skill_type: SkillType):
 		self.skill_type = skill_type
 
 		self.level: int = 0
 		self.exp: float = 0
 
-	def save(self) -> list[int | float]:
-		""" Сохранение навыка. """
-		return [self.level, self.exp]
+	def save(self) -> tuple[int, float]:
+		""" Возвращает данные для сохранения навыка. """
+		return self.level, self.exp
 
-	def load(self, data: list[int | float]):
-		""" Загрузка навыка. """
+	def load(self, data: tuple[int, float]):
+		""" Загружает данные навыка. """
 		self.level, self.exp = data
 
-	def add_level(self):
-		""" Прибавляет один уровень. """
-		self.level += 1
+	def reduce_exp(self, amount: float):
+		""" Отнимает опыт. """
+		self.exp -= amount
+		self.exp = self.exp if self.exp > 0 else 0
 
-	def add_exp(self, num: float):
-		""" Прибавляет опыт. """
-		self.exp += num
-
-	def reduce_exp(self, num: float):
-		""" Убавляет опыт. """
-		if self.exp > num:
-			self.exp -= num
-		else:
-			self.exp = 0
+	def __repr__(self):
+		""" Возвращает строковое представление объекта. """
+		return f"<Skill level={self.level} exp={self.exp}>"
 
 
-class Player:
-	"""
-	Объект игрока. В этом классе хранится вся информация о деньгах и навыках.
-
-	Аргументы:
-		name (str): Имя персонажа. По умолчанию пустая строка.
-		rank (RankType): Ранг персонажа. По умолчанию RankType.F
-		experience (int): Опыт. По умолчанию 0.
-		shops_save (dict[str, str | list[str]]): Сохранения магазина предметов. По умолчанию пустой словарь.
-
-		gold (Gold): объект золота.
-		skills (list[Skill]): список навыков.
-
-	Методы:
-		save(): Возвращает данные для сохранения.
-		load(data): Загружает данные пользователя из сохранения.
-		add_experience(): Добавляет опыт за выполнение квеста.
-		sum_level(): Считает сумму всех уровней навыков.
-	"""
-
+class GuildProfile:
 	def __init__(self):
 		self.name: str = ''
 		self.rank: RankType = RankType.F
 		self.experience: int = 0
-		self.shops_save: dict[str, str | list[str]] = {}
 
+		self.shops: dict[str, list[str] | str] = {}
+
+	def save(self) -> tuple[str, int, int, dict]:
+		""" Возвращает данные для сохранения профиля. """
+		return self.name, self.rank, self.experience, self.shops
+
+	def load(self, data: tuple[str, int, int, dict]):
+		""" Загружает данные профиля. """
+		self.name, self.rank, self.experience, self.shops = data
+
+	def add_experience(self) -> bool:
+		""" Прибавляет опыт, изменяет ранг. """
+		self.experience += 1
+
+		if self.experience >= RankType.experience(self.rank):
+			if RankType.S == self.rank:
+				self.experience = RankType.experience(RankType.S)
+			else:
+				self.experience = 0
+				self.rank += 1
+
+		return not self.experience
+
+	def __repr__(self):
+		""" Возвращает строковое представление объекта. """
+		return f"<GuildProfile name={self.name} rank={self.rank} experience={self.experience}>"
+
+
+class Player:
+	def __init__(self):
 		self.gold = Gold()
+		self.profile = GuildProfile()
 
 		self.skills: list[Skill] = [
 			Skill(SkillType.INTELLECT),
@@ -206,42 +152,22 @@ class Player:
 			Skill(SkillType.CRAFT),
 		]
 
-	def save(self) -> dict[str, float | list[list[int | float]]]:
-		""" Возвращает данные для сохранения. """
-		return {'name': self.name, 'rank': self.rank, 'experience': self.experience, 'money': self.gold.save(),
-				'shops_save': self.shops_save, 'skills': [skill.save() for skill in self.skills]}
+	def save(self) -> dict[str, Any]:
+		""" Возвращает данные для сохранения игрока. """
+		return {'money': self.gold.gold, 'skills': [s.save() for s in self.skills], 'profile': self.profile.save()}
 
-	def load(self, data: dict[str, float | list[list[int | float]]]):
-		""" Загружает данные пользователя из сохранения. """
-		self.name = data['name']
-		self.rank = data['rank']
-		self.experience = data['experience']
-		self.shops_save = data['shops_save']
-		self.gold.load(data['money'])
+	def load(self, data: dict[str, Any]):
+		""" Загружает данные игрока. """
+		self.gold.gold = data['money']
+		self.profile.load(data['profile'])
 
 		for count, skill_data in enumerate(data['skills']):
 			self.skills[count].load(skill_data)
 
-	def add_experience(self) -> bool:
-		""" Добавляет опыт за выполнение квеста. """
-		max_exp_rank = RankType.experience(RankType.S)
-
-		if self.rank == RankType.S and self.experience >= max_exp_rank - 1:
-			self.experience = max_exp_rank
-			return False
-
-		self.experience += 1
-
-		if self.experience == RankType.experience(self.rank):
-			self.rank += 1
-			return True
-		return False
-
 	def sum_level(self) -> int:
 		""" Считает сумму всех уровней навыков. """
-		all_level = 0
+		return sum(skill.level for skill in self.skills)
 
-		for skill in self.skills:
-			all_level += skill.level
-
-		return all_level
+	def __repr__(self):
+		""" Возвращает строковое представление объекта. """
+		return f"<Player gold={self.gold.gold} rank={self.profile.rank} experience={self.profile.experience}>"

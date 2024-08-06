@@ -80,12 +80,12 @@ class AwardsManager:
 
 		return gold, skills_exp, items
 
-	def get_rewards_daily_tasks(self, nums: list | set, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
+	def get_rewards_daily_tasks(self, tasks: list, need_items: bool = True) -> tuple[int, dict, list | list[Item]]:
 		"""
 		Получение наград и наказаний за ежедневные задания.
 
 		Аргументы:
-			nums (list[int]): Номера заданий, за которые надо выдать награду.
+			nums (list[int | DailyTask]): Номера заданий, за которые надо выдать награду.
 			need_items (bool): Нужно ли выдавать предметы. Параметр необходим для наказаний. По умолчанию True.
 
 		Возвращается:
@@ -95,8 +95,9 @@ class AwardsManager:
 		sum_all_skills = self.interface.player.sum_level()
 		sum_all_skills = DIVISOR_SUM_LEVELS if sum_all_skills < DIVISOR_SUM_LEVELS else sum_all_skills
 
-		for num in nums:
-			task = self.interface.daily_tasks_manager.get_daily_tasks(num)
+		for task in tasks:
+			if isinstance(task, int):
+				task = self.interface.daily_tasks_manager.get_task(task)
 
 			if task.skills is None:
 				gold += self.uniform() * (sum_all_skills / DIVISOR_SUM_LEVELS) * MULTIPLIER_OBTAINING_GOLD

@@ -2,7 +2,8 @@ from pyxdameraulevenshtein import damerau_levenshtein_distance
 
 from .content import all_items
 from .inventory import Item, ItemType, Inventory
-from .player import SKILL_DESCRIPTIONS, SkillType
+from .player import SKILL_DESCRIPTIONS, SkillType, RANK_DESCRIPTIONS
+from .quests import Quest
 
 
 def skill_check(skill: str) -> SkillType | None:
@@ -60,3 +61,15 @@ def calculate_item_bonus(inventory: Inventory, skill: SkillType, percent: bool =
 			except KeyError:
 				continue
 	return result
+
+
+def create_quest_item(data: list[dict]) -> list[Quest]:
+	def create_quest(quest_data: dict) -> Quest:
+		for rank_d in RANK_DESCRIPTIONS:
+			if quest_data['rank'] == RANK_DESCRIPTIONS[rank_d][0]:
+				rank = rank_d
+
+		return Quest(quest_data["id"], quest_data["name"], quest_data["description"], rank, quest_data['stages'],
+					 quest_data['rewards'])
+
+	return [create_quest(quest_data) for quest_data in data]

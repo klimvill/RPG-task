@@ -1,5 +1,7 @@
 markdown-it-py==3.0.0
 mdurl==0.1.2
+pyaml==24.7.0
 Pygments==2.18.0
 pyxDamerauLevenshtein==1.8.0
+PyYAML==6.0.1
 rich==13.7.1
