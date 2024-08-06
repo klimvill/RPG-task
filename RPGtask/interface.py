@@ -1,3 +1,4 @@
+import itertools
 import random
 import re
 import sys
@@ -62,6 +63,7 @@ class Interface:
 		self.daily_tasks_manager = DailyTaskManager()
 		self.quest_manager = QuestManager()
 
+		# self.main_menu()
 		self.update()
 		self.main()
 
@@ -211,7 +213,7 @@ class Interface:
 		if gold:
 			self.console.print(f'\n[yellow]Золото: [green]+{round(gold, 2)}')
 		if skills_exp:
-			self.console.print_tree_skills('[magenta]Навыки:', skills_exp)
+			self.console.print_tree_skills(skills_exp)
 		if items:
 			self.console.print_item_tree(items)
 
@@ -303,7 +305,7 @@ class Interface:
 
 		self.console.print(f'\n[yellow]Золото: [red]-{round(gold, 2)}')
 
-		self.console.print_tree_skills('[magenta]Навыки:', skills_exp, minus=True)
+		self.console.print_tree_skills(skills_exp, minus=True)
 
 		self.player.gold.payment(gold)
 		for skill, exp in skills_exp.items():
@@ -321,7 +323,7 @@ class Interface:
 		""" Функция гильдии. """
 		# Регистрация игрока #
 		if not self.player.profile.name:  # Имя зарегистрированного пользователя не может быть пустой строкой.
-			self.console.title('Гильдия, чтобы выйти нажмите enter')
+			self.console.title('Регистрация в гильдии')
 			self.console.print(guild_welcome_text_1)
 
 			while not (name := self.console.input('[cyan]Введите имя: ')):
@@ -486,61 +488,48 @@ class Interface:
 					slots = self.inventory.get(item.type, only_empty=True)
 					if slots:
 						slots[0][1].swap(slot)
-						self.console.print("[green]Предмет надет[/]")
+						self.console.print("[green]Предмет надет")
 					else:
-						self.console.print("[red]Нет доступных слотов[/]")
+						self.console.print("[red]Нет доступных слотов")
 				elif slot.type != ItemType.ITEM:
 					slots = self.inventory.get(ItemType.ITEM, only_empty=True)
 					if slots:
 						slots[0][1].swap(slot)
-						self.console.print("[green]Предмет снят[/]")
+						self.console.print("[green]Предмет снят")
 					else:
-						self.console.print("[red]Нет доступных слотов[/]")
+						self.console.print("[red]Нет доступных слотов")
 				elif slot.type == ItemType.ITEM and item.type == ItemType.ITEM:
 					self.console.print("[red]Вы не можете это надеть")
 
 			elif command == "u":
 				if item.is_usable and not item.is_wearable:
-					if item.effects.get('quest') is not None and not self.quest_manager.quest_been_launched():
-						self.quest_manager.start_quest(item.effects.get('quest'))
+					quest_effect = item.effects.get('quest')
+					textbook_effect = item.effects.get('textbook')
+					text_effect = item.effects.get('text')
 
-						self.console.print('[green]Квест успешно активирован!')
-
-						slot.amount -= 1
-
-					elif item.effects.get('textbook') is not None:  # Учебники
-						text = item.effects.get('text')
-						effect = item.effects.get('textbook')
-						new_effect = {}
-
-						for skill, exp in effect.items():
-							new_effect[self.player.skills[skill]] = exp
-
-						for skill, exp in new_effect.items():
-							self.player.skills[skill.skill_type].exp += exp
-
-						if text is not None:
-							self.console.title(f'{item.name}, чтобы выйти нажмите enter')
-							self.console.print(text)
-
-						self.console.print_tree_skills('\n[magenta]Навыки:', new_effect)
-
-						slot.amount -= 1
-
-					elif item.effects.get('text') is not None:  # Книги
+					if text_effect:  # Чтение книг
 						self.console.title(f'{item.name}, чтобы выйти нажмите enter')
-						self.console.print(item.effects.get('text'))
+						self.console.print(text_effect)
 
-					else:
-						self.console.print('[red]Вы не можете это использовать')
+					if quest_effect and not self.quest_manager.quest_been_launched():  # Активация квеста
+						self.quest_manager.start_quest(quest_effect)
+						self.console.print('[green]Квест успешно активирован!')
+						slot.amount -= 1
+
+					elif textbook_effect:  # Учебники
+						for skill, exp in textbook_effect.items():
+							self.player.skills[skill].exp += exp
+
+						self.console.print_tree_skills(textbook_effect)
+						slot.amount -= 1
 				else:
 					self.console.print('[red]Вы не можете это использовать')
 
 			elif command == "s":
 				if item.possible_sell:
+					self.console.print(f"[green]Предмет успешно продан за {item.sell} монеты")
 					self.player.gold.gold += item.sell
 					slot.clear()
-					self.console.print(f"[green]Предмет успешно продан за {item.sell} монеты[/]")
 				else:
 					self.console.print("[red]Вы не можете это продать")
 
@@ -551,9 +540,8 @@ class Interface:
 
 	def update(self):
 		""" Загрузка и обновление данных. """
+		today = str(date.today())
 		tasks = read_tasks()
-		player_info = read_player_info()
-		inventory = read_inventory()
 
 		# Запись заданий #
 		self.task_manager.load(tasks['user_tasks'])
@@ -562,10 +550,9 @@ class Interface:
 		self.quest_manager.load(tasks['quests'])
 
 		# Запись данных пользователя #
-		self.player.load(player_info)
-		self.inventory.load(inventory)
+		self.player.load(read_player_info())
+		self.inventory.load(read_inventory())
 
-		today = str(date.today())
 		# Обновляет магазин
 		if self.player.profile.shops['date'] != today:
 			self.update_shop()
@@ -577,13 +564,13 @@ class Interface:
 			# Если предыдущие задания не были выполнены, то наказываем игрока за это.
 			if not_complete_tasks:
 				self.console.title('Наказание за невыполнение заданий, чтобы выйти нажмите enter')
-				self.console.print('\n[d]Вы не закончили предыдущее ежедневное задание:')
+				# self.console.print('\nВы не закончили предыдущее ежедневное задание:')
 
 				gold, skills_exp, items = self.awards_manager.get_rewards_daily_tasks(not_complete_tasks,
 																					  need_items=False)
 
-				self.console.print(f'[yellow]Золото: [red]-{round(gold, 2)}')
-				self.console.print_tree_skills('[magenta]Навыки:', skills_exp, minus=True)
+				self.console.print(f'\n[yellow]Золото: [red]-{round(gold, 2)}')
+				self.console.print_tree_skills(skills_exp, minus=True)
 
 				self.player.gold.payment(gold)
 				for skill, exp in skills_exp.items():
@@ -592,19 +579,17 @@ class Interface:
 				input()
 
 	def update_shop(self):
-		quests = [
-			quest.id for quest in self.quest_manager.quests
-			if self.player.profile.rank - 2 < quest.rank < self.player.profile.rank + 2
-		]
+		rank = self.player.profile.rank
+
+		quests = [quest.id for quest in self.quest_manager.quests if rank - 2 < quest.rank < rank + 2]
+		items = random.sample(
+			list(itertools.chain.from_iterable(items.keys() for items in all_items.values())),
+			NUMBER_ITEM_STORE
+		)
 
 		# todo: Убрать, когда квестов станет достаточно
 		number_quest_store = NUMBER_QUEST_STORE if len(quests) > NUMBER_QUEST_STORE else len(quests)
 		quests = random.sample(quests, k=number_quest_store)
-
-		items = random.sample(
-			[item.id for items in all_items.values() for item in items.values()],
-			k=NUMBER_ITEM_STORE
-		)
 
 		self.player.profile.shops = {'date': str(date.today()), 'quests': quests, 'items': items}
 

@@ -125,21 +125,21 @@ class AppConsole:
 
 		self.console.print(text, justify='center')
 
-	def print_tree_skills(self, title: str, skills: dict[SkillType: float], minus: bool = False) -> NoReturn:
+	def print_tree_skills(self, skills: dict[SkillType: float], minus: bool = False) -> NoReturn:
 		"""
 		Печатает дерево наград для навыков.
 
 		Аргументы:
-			title (str): Заголовок дерева.
 			skills (dict[str: float]): Ключ — навык, значение — опыт прибавляемый к этому навыку.
 			minus (bool, optional): Если True, то значения выводятся со знаком минус. По умолчанию False.
 		"""
-		tree = Tree(title, guide_style='dim magenta')
+		tree = Tree('\n[magenta]Навыки:', guide_style='dim magenta')
 
 		c = '[red]-' if minus else '[green]+'
 
-		for key, value in skills.items():
-			tree.add(f'[magenta]{SkillType.description(key.skill_type)} {c}{round(value, 2)}')
+		for skill, exp in skills.items():
+			skill = skill if isinstance(skill, SkillType) else skill.skill_type
+			tree.add(f'[magenta]{SkillType.description(skill)} {c}{round(exp, 2)}')
 
 		if skills:
 			self.console.print(tree)
@@ -339,6 +339,7 @@ class AppConsole:
 		for count, quest in enumerate(quests, 1):
 			items = quest.reward['items']
 
+			description_sup = '[d]' if count % 2 == 0 else ''
 			sup_str = 'предмета' if len(items) > 1 else 'предмет'
 			reward_str = f', {len(items)} {sup_str}' if items else ''
 
@@ -346,7 +347,7 @@ class AppConsole:
 				str(count),
 				quest.name,
 				RankType.description(quest.rank),
-				quest.description,
+				description_sup + quest.description,
 				f'{quest.reward['gold']}G' + reward_str
 			)
 
@@ -359,16 +360,19 @@ class AppConsole:
 		Аргументы:
 			items (list[Item]): Список предметов, которые будут в магазине.
 		"""
-		table = Table(box=box.MINIMAL)
+		table = Table(box=box.SIMPLE)
 
 		table.add_column('№')
 		table.add_column('Предмет', style='magenta')
+		table.add_column('Описание', style='green', min_width=25)
 		table.add_column('Цена', justify='right', style='yellow')
 
 		for count, item in enumerate(items, 1):
+			description_sup = '[d]' if count % 2 == 0 else ''
 			table.add_row(
 				str(count),
 				item.name,
+				description_sup + item.description.capitalize(),
 				str(item.cost)
 			)
 
