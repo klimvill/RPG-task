@@ -14,7 +14,7 @@ from rich.tree import Tree
 
 from .inventory import Slot, Item, ItemType
 from .player import SkillType, Skill, RankType
-from .quests import Quest
+from .quests import Quest, BossFight
 from .utils import get_item
 
 if TYPE_CHECKING:
@@ -144,13 +144,7 @@ class AppConsole:
 		if skills:
 			self.console.print(tree)
 
-	def print_task_tree(self, hide_root: bool = True) -> NoReturn:
-		"""
-		Печатает дерево для просмотра всех заданий.
-
-		Аргументы:
-			hide_root (bool): Скрыть корень дерева. По умолчанию True.
-		"""
+	def print_task_tree(self, hide_root: bool = True):
 		user_tasks = self.interface.task_manager.tasks
 		daily_tasks_manager = self.interface.daily_tasks_manager
 		quests = self.interface.quest_manager.active_quests
@@ -158,56 +152,37 @@ class AppConsole:
 		tree = Tree('Задания', hide_root=hide_root)
 
 		# Пользовательские задания #
-		count_user_tasks = len(user_tasks)
-		end = ''
-
-		if count_user_tasks == 0:
+		if not user_tasks:
 			tree.add('[b green]Пользовательские задания[/]\nВы не добавили задания\n')
-
 		else:
 			branch_user_tasks = tree.add(f'[b green]Пользовательские задания')
 
-			for num, task in enumerate(user_tasks):
-				if count_user_tasks - 1 == num: end = '\n'
-
-				text, skills = task.text, task.get_skills_descriptions()
-
-				if skills is None:
-					branch_user_tasks.add(f'[green]{text}' + end)
-				else:
-					branch_user_tasks.add(f'[green]{text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
+			for i, task in enumerate(user_tasks, 1):
+				end = '\n' if len(user_tasks) == i else ''
+				branch_user_tasks.add(str(task) + end)
 
 		# Ежедневные задания #
-		count_daily_tasks = daily_tasks_manager.size()
-		end = ''
-
-		if count_daily_tasks == 0:
+		if not daily_tasks_manager.daily_tasks:
 			tree.add('[b yellow]Ежедневные задания[/]\nВы не добавили задания\n')
-
 		else:
 			c = '[green]x[/]' if daily_tasks_manager.done else ' '
 			branch_user_tasks = tree.add(f'[{c}] [b yellow]Ежедневные задания')
 
-			for num, task in enumerate(daily_tasks_manager.active_daily_tasks):
-				if count_daily_tasks - 1 == num: end = '\n'
-
-				skills = task.get_skills_descriptions()
-
-				c = '[dim][[green]x[/]]' if task.done else '[ ]'
-				if skills is None:
-					branch_user_tasks.add(f'{c} [yellow]{task.text}' + end)
-				else:
-					branch_user_tasks.add(f'{c} [yellow]{task.text}  [dim cyan]Навыки: {", ".join(skills)}' + end)
+			for i, task in enumerate(daily_tasks_manager.daily_tasks, 1):
+				end = '\n' if len(daily_tasks_manager.daily_tasks) == i else ''
+				branch_user_tasks.add(str(task) + end)
 
 		# Квесты #
-		if len(quests) == 0:
+		if not quests:
 			tree.add(f'[b red]Квесты[/]\nВозьмите квест в гильдии')
 
 		for active in quests:
 			c = 'green' if active.done else 'red'
 
 			quest_tree = tree.add(
-				f"[{c} b]{active.quest.text} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
+				f"[{c} b]{active.quest.name} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n"
+				f"{active.quest.description}"
+			)
 
 			for sid in active.done_stages:
 				stage = active.quest.stages[sid]
@@ -219,16 +194,33 @@ class AppConsole:
 			stage_tree = quest_tree.add(f"[ ] [green]{active.stage.name}")
 			for goal in active.goals:
 				mark = '[green]x[/]' if goal.completed else ' '
-				stage_tree.add(
-					f'[{mark}] [blue]{goal.text}\n'
-					f'[yellow]{goal.description}'
-				)
+
+				if isinstance(goal, BossFight):
+					# goal.add_damage(3)
+					stage_tree.add(
+						f'[{mark}] [blue]{goal.name}[/]\n'
+						f'HP: {self.create_progress_bar(goal.hp - goal.damage, goal.hp, 'red')}'
+					)
+				else:
+					# mark = '[green]x[/]' if goal.completed else ' '
+					stage_tree.add(
+						f'[{mark}] [blue]{goal.task}\n'
+						f'[yellow]{goal.description}'
+					)
 
 		self.console.print(tree)
 
+	def print_all_task(self) -> tuple[int, int, int]:
+		""" Печатает все задания с номерами. """
+		user_tasks_count = self.print_user_tasks()
+		daily_tasks_count = self.print_daily_tasks(user_tasks_count)
+		quests_count = self.print_quests(daily_tasks_count)
+
+		return user_tasks_count, daily_tasks_count, quests_count
+
 	def print_user_tasks(self, count: int = 1) -> int:
 		"""
-		Печатает пользовательские задания.
+		Печатает пользовательские задания с номерами.
 
 		Аргументы:
 			count (int): Число, с которого номера заданий будут брать отсчёт. По умолчанию 1.
@@ -237,17 +229,11 @@ class AppConsole:
 
 		self.console.print('[green]Пользовательские задания')
 
-		if len(user_tasks) == 0:
+		if not user_tasks:
 			self.console.print('Вы не добавили задания')
 		else:
 			for task in user_tasks:
-				text, skills = task.text, task.get_skills_descriptions()
-
-				if skills is None:
-					self.console.print(f'[white]({count}) {text}')
-				else:
-					self.console.print(f'[white]({count}) {text}  [dim cyan]Навыки: {", ".join(skills)}')
-
+				self.console.print(f"[white]({count}) " + str(task))
 				count += 1
 
 		print()
@@ -255,28 +241,20 @@ class AppConsole:
 
 	def print_daily_tasks(self, count: int) -> int:
 		"""
-		Печатает ежедневные задания.
+		Печатает ежедневные задания с номерами.
 
 		Аргументы:
 			count (int): Число, с которого номера заданий будут брать отсчёт. По умолчанию 1.
 		"""
-		daily_tasks = self.interface.daily_tasks_manager.active_daily_tasks
+		daily_tasks = self.interface.daily_tasks_manager.daily_tasks
 
 		self.console.print('[yellow]Ежедневные задания')
 
-		if len(daily_tasks) == 0:
+		if not daily_tasks:
 			self.console.print('Вы не добавили задания')
-
 		else:
-			for task in self.interface.daily_tasks_manager.active_daily_tasks:
-				skills = task.get_skills_descriptions()
-
-				c = '[dim][[green]x[/]]' if task.done else '[ ]'
-				if skills is None:
-					self.console.print(f'[white]({count}) {c} {task.text}')
-				else:
-					self.console.print(f'[white]({count}) {c} {task.text}  [dim cyan]Навыки: {", ".join(skills)}')
-
+			for task in daily_tasks:
+				self.console.print(f"[white]({count}) " + str(task))
 				count += 1
 
 		print()
@@ -298,7 +276,9 @@ class AppConsole:
 		for active in active_quests:
 			c = "green" if active.done else "red"
 			tree = Tree(
-				f"[{c} b]{active.quest.text} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n{active.quest.description}")
+				f"[{c} b]{active.quest.name} [white b]{len(active.done_stages)}/{len(active.quest.stages)}\n"
+				f"{active.quest.description}"
+			)
 
 			for sid in active.done_stages:
 				stage = active.quest.stages[sid]
@@ -310,23 +290,21 @@ class AppConsole:
 			stage_tree = tree.add(f"[white][ ] [green]{active.stage.name}")
 			for goal in active.goals:
 				mark = "x" if goal.completed else " "
-				stage_tree.add(
-					f"[white]({count}) [[green]{mark}[white]] [blue]{goal.text}\n"
-					f"[yellow]{goal.description}"
-				)
 
-				count += 1
+				if isinstance(goal, BossFight):
+					stage_tree.add(
+						f'[{mark}] [blue]{goal.name}[/]\n'
+						f'HP: {self.create_progress_bar(goal.hp - goal.damage, goal.hp, 'red')}'
+					)
+				else:
+					stage_tree.add(
+						f"[white]({count}) [[green]{mark}[white]] [blue]{goal.task}\n"
+						f"[yellow]{goal.description}"
+					)
+					count += 1
 
 		self.console.print(tree)
 		return count
-
-	def print_all_task(self) -> tuple[int, int, int]:
-		""" Печатает все задания. """
-		user_tasks_count = self.print_user_tasks()
-		daily_tasks_count = self.print_daily_tasks(user_tasks_count)
-		quests_count = self.print_quests(daily_tasks_count)
-
-		return user_tasks_count, daily_tasks_count, quests_count
 
 	def print_item_tree(self, items: list[Item]) -> NoReturn:
 		"""
@@ -366,7 +344,7 @@ class AppConsole:
 
 			table.add_row(
 				str(count),
-				quest.text,
+				quest.name,
 				RankType.description(quest.rank),
 				quest.description,
 				f'{quest.reward['gold']}G' + reward_str

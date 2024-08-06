@@ -2,6 +2,8 @@ import json
 from os import path
 from typing import Any
 
+import yaml
+
 from .player import SkillType
 
 # Пути до файлов с данными
@@ -9,6 +11,8 @@ base_path = path.dirname(__file__)
 task_path = path.abspath(path.join(base_path, 'data/tasks.json'))
 hero_path = path.abspath(path.join(base_path, 'data/player.json'))
 inventory_path = path.abspath(path.join(base_path, 'data/inventory.json'))
+
+quest_path = path.abspath(path.join(base_path, 'content/quests.yaml'))
 
 
 def all_save(tasks, hero_info, inventory):
@@ -24,7 +28,7 @@ def save_tasks(data):
 		json.dump(data, file, ensure_ascii=False)
 
 
-def read_tasks() -> dict[str, list[list[str | list[SkillType] | None]] |
+def read_tasks() -> dict[str, list[tuple[str, list[SkillType] | None]] |
 							  dict[str, str | bool | list[list[str, bool]]] |
 							  dict[str, bool | list[list[str | int] | list[Any] | Any]]]:
 	""" Чтение задач. """
@@ -54,3 +58,8 @@ def read_inventory():
 	""" Чтение данных об инвентаре. """
 	with open(inventory_path, "r", encoding='utf-8') as file:
 		return json.load(file)
+
+
+def read_quest() -> list[dict]:
+	with open(quest_path, encoding='utf-8') as file:
+		return yaml.safe_load(file)

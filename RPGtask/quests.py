@@ -1,97 +1,110 @@
-from typing import Any, NoReturn
+from abc import ABC, abstractmethod
+from typing import Any
 
 from .player import RankType
 
 
-class Goal:
-	"""
-	Объект задания.
+class GoalAbstract(ABC):
+	def __init__(self):
+		self.completed = False
 
-	Параметры:
-		name (str): Собственно текст самого задания.
-		description (str): Описание задания.
+	@abstractmethod
+	def save(self): ...
 
-	Атрибуты:
-		completed (bool): True задание выполнено, иначе False. По умолчанию False.
+	@abstractmethod
+	def load(self, data): ...
 
-	Методы:
-		save() -> bool: Сохраняет статус выполнения задания.
-		load(data: bool): Загружает статус выполнения задания.
-		complete(): Отмечает задание выполненным.
-	"""
+	@abstractmethod
+	def complete(self): ...
+
+
+class BossFight(GoalAbstract):
+	def __init__(self, data: list[str]):
+		super().__init__()
+		self.name, self.hp = data
+
+		self.damage: int = 0
+
+	def save(self) -> int:
+		""" Сохраняет статус выполнения задания. """
+		return self.damage
+
+	def load(self, data: int):
+		""" Загружает статус выполнения задания. """
+		self.damage = data
+		self.complete()
+
+	def add_damage(self, amount: int):
+		""" Прибавляет урон, проверяет выполнение. """
+		self.damage += amount
+		self.complete()
+
+	def complete(self):
+		""" Если нанесенного урона больше, чем жизней у боса, то отмечает задание выполненным. """
+		self.completed = self.damage >= self.hp
+
+	def __repr__(self):
+		""" Возвращает строковое представление объекта. """
+		return f"<Goal name={self.name!r} hp={self.hp} damage={self.damage} completed={self.completed}>"
+
+
+class Goal(GoalAbstract):
+	""" Объект задания. """
 
 	def __init__(self, goal: list[str]):
-		self.text = goal[0]
-		self.description = goal[1]
-
-		self.completed = False
+		super().__init__()
+		self.task, self.description = goal
 
 	def save(self) -> bool:
 		""" Сохраняет статус выполнения задания. """
 		return self.completed
 
-	def load(self, data: bool) -> NoReturn:
+	def load(self, data: bool):
 		""" Загружает статус выполнения задания. """
 		self.completed = data
 
-	def complete(self) -> NoReturn:
+	def complete(self):
 		""" Отмечает задание выполненным. """
 		self.completed = True
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
-		return f'<Goal name={self.text!r} completed={self.completed}>'
+		return f"<Goal name={self.task!r} description={self.description!r} completed={self.completed}>"
 
 
 class Stage:
-	"""
-	Объект стадии квеста.
+	""" Объект стадии квеста. """
 
-	Параметры:
-		name (str): Название стадии.
-		goals (list[list[str]]): Задания.
-		rewards (list[str]): Награды за выполнение стадии.
-	"""
-
-	def __init__(self, data: dict[str, Any]):
+	def __init__(self, data: dict):
 		self.name: str = data['name']
 		self.goals: list[list[str]] = data['goals']
 		self.rewards: list[str] = data['rewards']
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
-		return f'<Stage name={self.name!r} goals={len(self.goals)}>'
+		return f"<Stage name={self.name!r} goals={len(self.goals)} rewards={self.rewards}>"
 
 
 class Quest:
-	"""
-	Объект квеста.
+	""" Объект квеста. """
 
-	Параметры:
-		id (str): Уникальный идентификатор.
-		name (str): Название квеста.
-		description (str): Описание.
-		level (QuestLevel): Сложность квеста.
-		stages (dict[str | int, Stage]): Стадии квеста.
-	"""
-
-	def __init__(self, identifier: str, text: str, description: str, rank: RankType,
-				 stages: dict[str | int, dict[str, Any]], reward: dict):
+	def __init__(self, identifier, name, description, rank: RankType, stages: dict[int, dict[str, list]], reward):
 		self.id = identifier
-		self.text = text
+		self.name = name
 		self.rank = rank
 		self.description = description
 		self.reward = reward
-		self.stages: dict[str | int, Stage] = {i: Stage(j) for i, j in stages.items()}
+
+		self.stages: dict[int, Stage] = {i: Stage(j) for i, j in stages.items()}
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
-		return f'<Quest id={self.id!r} name={self.text!r} stages={len(self.stages)}>'
+		return f"<Quest id={self.id!r} name={self.name!r} stages={len(self.stages)}>"
 
 
 class QuestState:
 	"""
-	Объект стадий квеста.
+	Объект текущей стадий квеста.
 
 	Параметры:
 		quest (Quest): Объект квеста.
@@ -111,79 +124,81 @@ class QuestState:
 
 	def __init__(self, quest: Quest):
 		self.quest = quest
-		self.done_stages: list[str | int] = []
+		self.done_stages: list[int] = []
 		self.done = False
 
 		self.update(next(iter(quest.stages)))
 
-	def update(self, stage: str | int) -> NoReturn:
+	def update(self, stage: int):
 		"""
 		Обновляет состояние квеста до определённого этапа.
 
 		Аргументы:
-			stage (str, int): Идентификатор стадии, до которой надо обновить.
+			stage (int): Идентификатор стадии, до которой надо обновить.
 		"""
-		self.stage = self.quest.stages[stage]
 		self.stage_id = stage
-		self.goals = [Goal(goal) for goal in self.stage.goals]
+		self.stage = self.quest.stages[stage]
+
+		self.goals = []
+
+		for goal in self.stage.goals:
+			if goal[0] == 'boss':
+				self.goals.append(BossFight(goal[1:]))
+			else:
+				self.goals.append(Goal(goal))
+
+		# self.goals = [Goal(goal) for goal in self.stage.goals]
+
 		self.rewards = self.stage.rewards
 
-	def save(self) -> bool | list[list[str | int] | list[Any] | Any]:
-		"""
-		Сохраняет состояние квеста.
-
-		Возвращается:
-			Union[bool, list]: Сохраняемая информация.
-		"""
+	def save(self) -> bool | tuple[list[int], int, list[bool]]:
+		""" Сохраняет состояние квеста. """
 		if self.done:
 			return True
-		return [self.done_stages, self.stage_id, [g.save() for g in self.goals]]
+		return self.done_stages, self.stage_id, [g.save() for g in self.goals]
 
-	def load(self, data: bool | list[list[str | int] | list[Any] | Any]):
-		"""
-		Загружает состояние квеста.
-
-		Аргументы:
-			data (Union[bool, list]): Состояние квеста.
-		"""
-		if data is True:
+	def load(self, data: bool | tuple[list[str], int, list[bool]]):
+		""" Загружает состояние квеста. """
+		if isinstance(data, bool):
 			self.done = True
 			self.done_stages = list(self.quest.stages.keys())
-			print(list(self.quest.stages.keys()))
 		else:
 			self.done_stages = data[0]
 			self.update(data[1])
-			for i, goal in enumerate(self.goals):
-				goal.load(data[2][i])
+
+			for num, goal in enumerate(self.goals):
+				goal.load(data[2][num])
 
 	def complete(self, num: int):
-		"""
-		Завершает задание по его номеру.
+		""" Завершает задание по его номеру. """
+		self.goals[num].complete()
+		self.check_all_goal_completed()
 
-		Аргументы:
-			num (int): Номер выполненного задания.
-		"""
-		goal = self.goals[num]
-		if not goal.completed:
-			goal.complete()
+	def add_damage(self, amount: int):
+		# Планируется, что босы всегда будут единственным заданием в стадии.
+		self.goals[0].add_damage(amount)
+		self.check_all_goal_completed()
 
+	def check_boss_fight(self) -> bool:
+		# Планируется, что босы всегда будут единственным заданием в стадии.
+		return isinstance(self.goals[0], BossFight)
+
+	def check_all_goal_completed(self):
 		if all(goal.completed for goal in self.goals):
 			self.done_stages.append(self.stage_id)
 			self.process_rewards()
 
 	def get_goal(self, num: int) -> Goal:
 		""" Получение задания по номеру. """
-		goal = self.goals[num]
-		return goal
+		return self.goals[num]
 
-	def process_rewards(self) -> NoReturn:
+	def process_rewards(self):
 		""" Выдаёт награды за прохождение стадии. """
 		rewards = self.rewards
 
-		if rewards[0] == 'stage':
-			new_stage = int(rewards[1]) if rewards[1].isdigit() else rewards[1]
-			self.update(new_stage)
-		elif rewards[0] == 'end':
+		if "stage" == rewards[0]:
+			self.update(int(rewards[1]))
+		elif "end" == rewards[0]:
 			self.done = True
 
 	def __repr__(self):
@@ -203,19 +218,18 @@ class QuestManager:
 	Методы:
 		save(): Сохраняет идентификатор и состояние квестов.
 		load(data): Загружает идентификатор и состояние квестов.
-		get_quest(identifier): Возвращает квест по идентификатору.
 		start_quest(identifier): Начинает квест по идентификатору.
 		complete_goal(num): Выполняет задание из активного квеста по номеру.
-		quest_been_launched(): Квест был запущен.
-		clear_active_quest(): Удаляет квесты из активных.
+		get_quest(identifier): Возвращает квест по идентификатору.
 		is_done(): Проверяет выполнено ли задание.
+		quest_been_launched(): Квест был запущен.
 	"""
 
 	def __init__(self):
 		self.quests: list[Quest] = []
 		self.active_quests: list[QuestState] = []
 
-	def save(self) -> dict[str, bool | list[list[str | int] | list[Any] | Any]]:
+	def save(self) -> dict[str, bool | tuple[list[int], int, list[bool]]]:
 		""" Возвращает идентификатор и состояние квестов. """
 		return {q.quest.id: q.save() for q in self.active_quests}
 
@@ -224,71 +238,40 @@ class QuestManager:
 		self.active_quests = []
 
 		for identifier, state in data.items():
-			quest = self.get_quest(identifier)
-			if quest:
-				new_state = QuestState(quest)
-				new_state.load(state)
-				self.active_quests.append(new_state)
-			else:
-				raise ValueError(f"Quest {identifier} not found")
+			new_state = QuestState(self.get_quest(identifier))
+			new_state.load(state)
+			self.active_quests.append(new_state)
 
-	def get_quest(self, identifier: str | Quest) -> Quest:
-		"""
-		Возвращает квест по идентификатору.
+	def start_quest(self, identifier: str):
+		""" Начинает квест по идентификатору. """
+		self.active_quests.append(QuestState(self.get_quest(identifier)))
 
-		Аргументы:
-			identifier (str | Quest): Идентификатор квеста
+	def complete_goal(self, num: int):
+		""" Выполняет задание из активного квеста по номеру. """
+		if not self.quest_been_launched():
+			raise ValueError(f"Goal {num - 1} not found")
 
-		Возвращается:
-			Quest: Собственно полученный квест.
-		"""
-		if isinstance(identifier, Quest):
-			return identifier
+		self.active_quests[0].complete(num - 1)
+
+	def add_damage(self, damage: int):
+		if self.quest_been_launched() and self.active_quests[0].check_boss_fight():
+			self.active_quests[0].add_damage(damage)
+
+	def get_quest(self, identifier: str) -> Quest:
+		""" Возвращает квест по идентификатору. """
 		for quest in self.quests:
 			if quest.id == identifier:
 				return quest
 		raise ValueError(f"Quest {identifier} not found")
 
-	def start_quest(self, identifier: str) -> NoReturn:
-		"""
-		Начинает квест по идентификатору.
-
-		Аргументы:
-			identifier (str | Quest): Идентификатор квеста
-		"""
-		quest = self.get_quest(identifier)
-		if quest:
-			self.active_quests.append(QuestState(quest))
-		else:
-			raise ValueError(f"Quest {identifier} not found")
-
-	def complete_goal(self, num: int) -> NoReturn:
-		"""
-		Выполняет задание из активного квеста по номеру.
-
-		Аргументы:
-			num (int): Номер выполненного задания.
-		"""
-		if not len(self.active_quests):
-			raise ValueError(f"Goal {num} not found")
-
-		quest = self.active_quests[0]  # Пока может быть только один активный квест
-		if not quest.done:
-			quest.complete(num)
-
 	def is_done(self) -> bool:
-		"""
-		Проверяет выполнено ли задание.
-
-		Возвращается:
-			bool: True если задание выполнено, иначе False.
-		"""
-		if not len(self.active_quests):
+		""" Проверяет выполнено ли задание. """
+		if not self.quest_been_launched():
 			return False
 		return self.active_quests[0].done
 
 	def quest_been_launched(self) -> bool:
-		""" Квест был запущен. """
+		""" Был ли квест запущен. """
 		return bool(self.active_quests)
 
 	def clear_active_quest(self):
@@ -297,4 +280,4 @@ class QuestManager:
 
 	def __repr__(self):
 		""" Возвращает строковое представление объекта. """
-		return f"<QuestManager q={len(self.quests)}>"
+		return f"<QuestManager quests={len(self.quests)}>"

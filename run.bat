@@ -1,3 +1,3 @@
 @echo off
 call .venv\Scripts\activate.bat
-python run.py %*
+python -c __import__('RPGtask.interface').Interface()

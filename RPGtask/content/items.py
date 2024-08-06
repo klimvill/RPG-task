@@ -40,39 +40,39 @@ old_helmet = Item('old_helmet', 'Старый шлем', 'повидал нем�
 old_helmet.set_type(ItemType.HELMET)
 old_helmet.set_effect(SkillType.POWER, 1.03)
 old_helmet.set_effect(SkillType.ENDURANCE, 1.03)
-old_helmet.set_cost(3, 1)
+old_helmet.set_cost(1.5, 0.75)
 
 wooden_circlet = Item('wooden_circlet', 'Деревянный обруч', 'старательно вырезанное украшение.')
 wooden_circlet.set_type(ItemType.HELMET)
 wooden_circlet.set_effect(SkillType.ART, 1.03)
 wooden_circlet.set_effect(SkillType.LANGUAGES, 1.03)
-wooden_circlet.set_cost(3, 1)
+wooden_circlet.set_cost(1.5, 0.75)
 
 tin_helmet = Item('tin_helmet', 'Жестяной шлем', 'таким снаряжают городскую стражу.')
 tin_helmet.set_type(ItemType.HELMET)
 tin_helmet.set_effect(SkillType.POWER, 1.1)
-tin_helmet.set_cost(10, 5)
+tin_helmet.set_cost(4, 2)
 
 #################################           Шлемы - 2 уровень           ################################################
 steel_helmet = Item('steel_helmet', 'Стальной шлем', 'в таких ходят главари разбойников.')
 steel_helmet.set_type(ItemType.HELMET)
 steel_helmet.set_effect(SkillType.POWER, 1.06)
 steel_helmet.set_effect(SkillType.ENDURANCE, 1.06)
-steel_helmet.set_cost(20, 10)
+steel_helmet.set_cost(10, 5)
 
 brodie_helmet = Item('brodie_helmet', 'Шлем Броди', 'защищал владельца от падающих болтов.')
 brodie_helmet.set_type(ItemType.HELMET)
 brodie_helmet.set_effect(SkillType.SCIENCE, 1.1)
 brodie_helmet.set_effect(SkillType.LANGUAGES, 1.1)
 brodie_helmet.set_effect(SkillType.CRAFT, 1.05)
-brodie_helmet.set_cost(75, 35)
+brodie_helmet.set_cost(50, 25)
 
 pink_ribbon = Item('pink_ribbon', 'Розовая ленточка', 'украшение в форме цветка, хорошо сочетается с голубым.')
 pink_ribbon.set_type(ItemType.HELMET)
 pink_ribbon.set_effect(SkillType.CRAFT, 1.1)
 pink_ribbon.set_effect(SkillType.ART, 1.1)
 pink_ribbon.set_effect(SkillType.FINANCE, 1.05)
-pink_ribbon.set_cost(60, 30)
+pink_ribbon.set_cost(50, 25)
 
 #################################           Шлемы - 3 уровень           ################################################
 straw_hat = Item('straw_hat', 'Соломенная шляпа', 'шляпа настоящего искателя приключений.')
@@ -101,13 +101,13 @@ chain_mail = Item('chain_mail', 'Кольчуга', 'металлические 
 chain_mail.set_type(ItemType.BREASTPLATE)
 chain_mail.set_effect(SkillType.POWER, 1.05)
 chain_mail.set_effect(SkillType.CRAFT, 1.05)
-chain_mail.set_cost(10, 5)
+chain_mail.set_cost(8, 4)
 
 grey_mantle = Item('grey_mantle', 'Серая мантия', 'мантия тёмно-серого цвета, сшитая из шкуры крысы Макки.')
 grey_mantle.set_type(ItemType.BREASTPLATE)
 grey_mantle.set_effect(SkillType.ENDURANCE, 1.08)
 grey_mantle.set_effect(SkillType.LANGUAGES, 1.05)
-grey_mantle.set_cost(12, 6)
+grey_mantle.set_cost(10, 5)
 
 ################################           Нагрудник - 2 уровень           #############################################
 quilted_armor = Item('quilted_armor', 'Стёганка', 'несколько слоёв ткани, крепко соединённых между собой.')
@@ -176,7 +176,7 @@ phantom_ring.set_cost(600, 300)
 
 
 #################################           Амулеты - 1 уровень           ##############################################
-copper_amulet = Item('copper_amulet', 'Медный амулет', 'дешёвое и неказистое украшение, явно выполнен подмастерьем.')
+copper_amulet = Item('copper_amulet', 'Медный амулет', 'дешёвое и неказистое украшение, явно создан подмастерьем.')
 copper_amulet.set_type(ItemType.AMULET)
 copper_amulet.set_effect(SkillType.POWER, 1.03)
 copper_amulet.set_effect(SkillType.SCIENCE, 1.03)
