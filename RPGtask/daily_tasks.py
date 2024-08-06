@@ -68,15 +68,15 @@ class DailyTaskManager:
 
 	def delete_task(self, num: int) -> DailyTask:
 		""" Удаляет ежедневное задание по номеру. Если номер некорректный вызывает ошибку. """
-		if len(self.daily_tasks) >= num:
-			return self.daily_tasks.pop(num - 1)
-		raise ValueError(f"Daily task {num - 1} not found")
+		if len(self.daily_tasks) > num:
+			return self.daily_tasks.pop(num)
+		raise ValueError(f"Daily task {num} not found")
 
 	def get_task(self, num: int) -> DailyTask:
 		""" Получение ежедневного задания по номеру. Если номер некорректный вызывает ошибку. """
-		if len(self.daily_tasks) >= num:
-			return self.daily_tasks[num - 1]
-		raise ValueError(f"Daily task {num - 1} not found")
+		if len(self.daily_tasks) > num:
+			return self.daily_tasks[num]
+		raise ValueError(f"Daily task {num} not found")
 
 
 	def complete(self, num: int):

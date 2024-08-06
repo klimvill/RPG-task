@@ -249,9 +249,9 @@ class QuestManager:
 	def complete_goal(self, num: int):
 		""" Выполняет задание из активного квеста по номеру. """
 		if not self.quest_been_launched():
-			raise ValueError(f"Goal {num - 1} not found")
+			raise ValueError(f"Goal {num} not found")
 
-		self.active_quests[0].complete(num - 1)
+		self.active_quests[0].complete(num)
 
 	def add_damage(self, damage: int):
 		if self.quest_been_launched() and self.active_quests[0].check_boss_fight():
