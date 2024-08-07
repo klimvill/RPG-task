@@ -65,11 +65,9 @@ def calculate_item_bonus(inventory: Inventory, skill: SkillType, percent: bool =
 
 def create_quest_item(data: list[dict]) -> list[Quest]:
 	def create_quest(quest_data: dict) -> Quest:
-		for rank_d in RANK_DESCRIPTIONS:
-			if quest_data['rank'] == RANK_DESCRIPTIONS[rank_d][0]:
-				rank = rank_d
+		rank = [rank_t for rank_t, data in RANK_DESCRIPTIONS.items() if quest_data['rank'] == data[0]][0]
 
-		return Quest(quest_data["id"], quest_data["name"], quest_data["description"], rank, quest_data['stages'],
-					 quest_data['rewards'])
+		return Quest(quest_data["id"], quest_data["name"], quest_data["description"], rank, quest_data['in_guild'],
+					 quest_data['stages'], quest_data['rewards'])
 
 	return [create_quest(quest_data) for quest_data in data]

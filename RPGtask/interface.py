@@ -3,7 +3,6 @@ import random
 import re
 import sys
 from datetime import date
-from optparse import OptionParser
 
 from .awards import AwardsManager
 from .config import NUMBER_QUEST_STORE, NUMBER_ITEM_STORE
@@ -50,9 +49,6 @@ class Interface:
 	"""
 
 	def __init__(self):
-		self.parser = OptionParser()
-		self.parser.add_option('-e', '--every_day', dest='every_day', action='store_true')
-
 		self.console = AppConsole(self)
 		self.awards_manager = AwardsManager(self)
 
@@ -143,14 +139,11 @@ class Interface:
 				skills_result = list(skills_result)[:3]
 
 			# Добавление задачи в список #
-			task_sp = task.split()
-			if '-e' in task_sp or '--every_day' in task_sp:
-				options, args = self.parser.parse_args(task_sp)
+			task_split = task.split()
+			check_arg = [t for t in task_split if t != '-e']
 
-				if options.every_day:
-					self.daily_tasks_manager.add_task(' '.join(args), skills_result)
-				else:
-					self.task_manager.add_task(task, skills_result)
+			if len(task_split) > len(check_arg):
+				self.daily_tasks_manager.add_task(' '.join(check_arg), skills_result)
 			else:
 				self.task_manager.add_task(task, skills_result)
 
@@ -581,7 +574,8 @@ class Interface:
 	def update_shop(self):
 		rank = self.player.profile.rank
 
-		quests = [quest.id for quest in self.quest_manager.quests if rank - 2 < quest.rank < rank + 2]
+		quests = [quest.id for quest in self.quest_manager.quests if
+				  rank - 2 < quest.rank < rank + 2 and quest.in_guild]
 		items = random.sample(
 			list(itertools.chain.from_iterable(items.keys() for items in all_items.values())),
 			NUMBER_ITEM_STORE
