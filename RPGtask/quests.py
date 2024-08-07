@@ -88,12 +88,13 @@ class Stage:
 class Quest:
 	""" Объект квеста. """
 
-	def __init__(self, identifier, name, description, rank: RankType, stages: dict[int, dict[str, list]], reward):
+	def __init__(self, identifier, name, description, rank: RankType, in_guild: bool, stages: dict[int, dict[str, list]], reward):
 		self.id = identifier
 		self.name = name
 		self.rank = rank
 		self.description = description
 		self.reward = reward
+		self.in_guild = in_guild
 
 		self.stages: dict[int, Stage] = {i: Stage(j) for i, j in stages.items()}
 

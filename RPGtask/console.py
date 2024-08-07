@@ -71,7 +71,7 @@ class AppConsole:
 
 		self.log = logging.getLogger('console')
 
-	def menu(self, prompt: str, variants: list, title: str, clear: bool = True) -> str:
+	def menu(self, prompt: str, variants: list, title: str) -> str:
 		"""
 		Печатает меню и текст, который предлагает пользователю сделать выбор.
 
@@ -79,20 +79,14 @@ class AppConsole:
 			prompt (str): Текст, который предлагает пользователю сделать выбор.
 			variants (list): Список вариантов выбора.
 			title (str): Заголовок панели меню.
-			clear (bool, optional): Если True очищает консоль перед выводом. По умолчанию True.
 
 		Возвращается:
 			str: Вариант, который выбрал пользователь.
 		"""
-		text_menu = '\n'
-
-		for i, j in enumerate(variants, 1):
-			text_menu += f'[{i}] {j}\n'
+		text_menu = f'\n{'\n'.join(f'[{num}] {j}' for num, j in enumerate(variants, 1))}\n'
 
 		while True:
-			if clear:
-				self.clear_console()
-
+			self.clear_console()
 			self.panel_print(text_menu, title)
 			res = self.input(prompt)
 
